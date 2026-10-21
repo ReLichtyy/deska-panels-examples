@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chess</title>
+    <link rel="stylesheet" href="app.css" />
+    <script src="/__deska/sdk.js"></script>
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <!-- Icons: Phosphor Icons (MIT), regular weight, inlined so the page loads nothing else. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <symbol id="i-house" viewBox="0 0 256 256"><path d="M219.31,108.68l-80-80a16,16,0,0,0-22.62,0l-80,80A15.87,15.87,0,0,0,32,120v96a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V160h32v56a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V120A15.87,15.87,0,0,0,219.31,108.68ZM208,208H160V152a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8v56H48V120l80-80,80,80Z"/></symbol>
+    <symbol id="i-magnifying-glass" viewBox="0 0 256 256"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/></symbol>
+    <symbol id="i-crown-simple" viewBox="0 0 256 256"><path d="M230.9,73.6A15.85,15.85,0,0,0,212,77.39l-33.67,36.29-35.8-80.29a1,1,0,0,1,0-.1,16,16,0,0,0-29.06,0,1,1,0,0,1,0,.1l-35.8,80.29L44,77.39A16,16,0,0,0,16.25,90.81c0,.11,0,.21.07.32L39,195a16,16,0,0,0,15.72,13H201.29A16,16,0,0,0,217,195L239.68,91.13c0-.11,0-.21.07-.32A15.85,15.85,0,0,0,230.9,73.6ZM201.35,191.68l-.06.32H54.71l-.06-.32L32,88l.14.16,42,45.24a8,8,0,0,0,13.18-2.18L128,40l40.69,91.25a8,8,0,0,0,13.18,2.18l42-45.24L224,88Z"/></symbol>
+      <symbol id="i-robot" viewBox="0 0 256 256"><path d="M200,48H136V16a8,8,0,0,0-16,0V48H56A32,32,0,0,0,24,80V192a32,32,0,0,0,32,32H200a32,32,0,0,0,32-32V80A32,32,0,0,0,200,48Zm16,144a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V80A16,16,0,0,1,56,64H200a16,16,0,0,1,16,16Zm-52-56H92a28,28,0,0,0,0,56h72a28,28,0,0,0,0-56Zm-24,16v24H116V152ZM80,164a12,12,0,0,1,12-12h8v24H92A12,12,0,0,1,80,164Zm84,12h-8V152h8a12,12,0,0,1,0,24ZM72,108a12,12,0,1,1,12,12A12,12,0,0,1,72,108Zm88,0a12,12,0,1,1,12,12A12,12,0,0,1,160,108Z"/></symbol>
+      <symbol id="i-hourglass-medium" viewBox="0 0 256 256"><path d="M200,75.64V40a16,16,0,0,0-16-16H72A16,16,0,0,0,56,40V76a16.07,16.07,0,0,0,6.4,12.8L114.67,128,62.4,167.2A16.07,16.07,0,0,0,56,180v36a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V180.36a16.09,16.09,0,0,0-6.35-12.77L141.27,128l52.38-39.6A16.05,16.05,0,0,0,200,75.64ZM72,40H184V75.64L178.23,80H77.33L72,76Zm56,78L98.67,96h58.4Zm56,98H72V180l48-36v24a8,8,0,0,0,16,0V144.08l48,36.28Z"/></symbol>
+      <symbol id="i-trophy" viewBox="0 0 256 256"><path d="M232,64H208V48a8,8,0,0,0-8-8H56a8,8,0,0,0-8,8V64H24A16,16,0,0,0,8,80V96a40,40,0,0,0,40,40h3.65A80.13,80.13,0,0,0,120,191.61V216H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16H136V191.58c31.94-3.23,58.44-25.64,68.08-55.58H208a40,40,0,0,0,40-40V80A16,16,0,0,0,232,64ZM48,120A24,24,0,0,1,24,96V80H48v32q0,4,.39,8Zm144-8.9c0,35.52-29,64.64-64,64.9a64,64,0,0,1-64-64V56H192ZM232,96a24,24,0,0,1-24,24h-.5a81.81,81.81,0,0,0,.5-8.9V80h24Z"/></symbol>
+      <symbol id="i-handshake" viewBox="0 0 256 256"><path d="M254.3,107.91,228.78,56.85a16,16,0,0,0-21.47-7.15L182.44,62.13,130.05,48.27a8.14,8.14,0,0,0-4.1,0L73.56,62.13,48.69,49.7a16,16,0,0,0-21.47,7.15L1.7,107.9a16,16,0,0,0,7.15,21.47l27,13.51,55.49,39.63a8.06,8.06,0,0,0,2.71,1.25l64,16a8,8,0,0,0,7.6-2.1l55.07-55.08,26.42-13.21a16,16,0,0,0,7.15-21.46Zm-54.89,33.37L165,113.72a8,8,0,0,0-10.68.61C136.51,132.27,116.66,130,104,122L147.24,80h31.81l27.21,54.41ZM41.53,64,62,74.22,36.43,125.27,16,115.06Zm116,119.13L99.42,168.61l-49.2-35.14,28-56L128,64.28l9.8,2.59-45,43.68-.08.09a16,16,0,0,0,2.72,24.81c20.56,13.13,45.37,11,64.91-5L188,152.66Zm62-57.87-25.52-51L214.47,64,240,115.06Zm-87.75,92.67a8,8,0,0,1-7.75,6.06,8.13,8.13,0,0,1-1.95-.24L80.41,213.33a7.89,7.89,0,0,1-2.71-1.25L51.35,193.26a8,8,0,0,1,9.3-13l25.11,17.94L126,208.24A8,8,0,0,1,131.82,217.94Z"/></symbol>
+      <symbol id="i-warning" viewBox="0 0 256 256"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z"/></symbol>
+      <symbol id="i-palette" viewBox="0 0 256 256"><path d="M200.77,53.89A103.27,103.27,0,0,0,128,24h-1.07A104,104,0,0,0,24,128c0,43,26.58,79.06,69.36,94.17A32,32,0,0,0,136,192a16,16,0,0,1,16-16h46.21a31.81,31.81,0,0,0,31.2-24.88,104.43,104.43,0,0,0,2.59-24A103.28,103.28,0,0,0,200.77,53.89Zm13,93.71A15.89,15.89,0,0,1,198.21,160H152a32,32,0,0,0-32,32,16,16,0,0,1-21.31,15.07C62.49,194.3,40,164,40,128a88,88,0,0,1,87.09-88h.9a88.35,88.35,0,0,1,88,87.25A88.86,88.86,0,0,1,213.81,147.6ZM140,76a12,12,0,1,1-12-12A12,12,0,0,1,140,76ZM96,100A12,12,0,1,1,84,88,12,12,0,0,1,96,100Zm0,56a12,12,0,1,1-12-12A12,12,0,0,1,96,156Zm88-56a12,12,0,1,1-12-12A12,12,0,0,1,184,100Z"/></symbol>
+      <symbol id="i-arrow-counter-clockwise" viewBox="0 0 256 256"><path d="M224,128a96,96,0,0,1-94.71,96H128A95.38,95.38,0,0,1,62.1,197.8a8,8,0,0,1,11-11.63A80,80,0,1,0,71.43,71.39a3.07,3.07,0,0,1-.26.25L44.59,96H72a8,8,0,0,1,0,16H24a8,8,0,0,1-8-8V56a8,8,0,0,1,16,0V85.8L60.25,60A96,96,0,0,1,224,128Z"/></symbol>
+      <symbol id="i-list" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></symbol>
+      <symbol id="i-x" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+      <symbol id="i-horse" viewBox="0 0 256 256"><path d="M136,100a12,12,0,1,1-12-12A12,12,0,0,1,136,100Zm96,29.48A104.29,104.29,0,0,1,130.1,232l-2.17,0a103.32,103.32,0,0,1-69.26-26A8,8,0,1,1,69.34,194a84.71,84.71,0,0,0,20.1,13.37L116,170.84c-22.78-9.83-47.47-5.65-61.4-3.29A31.84,31.84,0,0,1,23.3,154.72l-.3-.43-13.78-22a8,8,0,0,1,2.59-11.05L112,59.53V32a8,8,0,0,1,8-8h8A104,104,0,0,1,232,129.48Zm-16-.22A88,88,0,0,0,128,40V64a8,8,0,0,1-3.81,6.81L27.06,130.59l9.36,15A15.92,15.92,0,0,0,52,151.77c16-2.7,48.77-8.24,78.07,8.18A40.06,40.06,0,0,0,168,120a8,8,0,0,1,16,0,56.07,56.07,0,0,1-51.8,55.83l-27.11,37.28A90.89,90.89,0,0,0,129.78,216,88.29,88.29,0,0,0,216,129.26Z"/></symbol>
+      <symbol id="i-shuffle" viewBox="0 0 256 256"><path d="M237.66,178.34a8,8,0,0,1,0,11.32l-24,24a8,8,0,0,1-11.32-11.32L212.69,192H200.94a72.12,72.12,0,0,1-58.59-30.15l-41.72-58.4A56.1,56.1,0,0,0,55.06,80H32a8,8,0,0,1,0-16H55.06a72.12,72.12,0,0,1,58.59,30.15l41.72,58.4A56.1,56.1,0,0,0,200.94,176h11.75l-10.35-10.34a8,8,0,0,1,11.32-11.32ZM143,107a8,8,0,0,0,11.16-1.86l1.2-1.67A56.1,56.1,0,0,1,200.94,80h11.75L202.34,90.34a8,8,0,0,0,11.32,11.32l24-24a8,8,0,0,0,0-11.32l-24-24a8,8,0,0,0-11.32,11.32L212.69,64H200.94a72.12,72.12,0,0,0-58.59,30.15l-1.2,1.67A8,8,0,0,0,143,107Zm-30,42a8,8,0,0,0-11.16,1.86l-1.2,1.67A56.1,56.1,0,0,1,55.06,176H32a8,8,0,0,0,0,16H55.06a72.12,72.12,0,0,0,58.59-30.15l1.2-1.67A8,8,0,0,0,113,149Z"/></symbol>
+      <symbol id="i-user-circle" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.5a64,64,0,0,1,107.84,0,87.83,87.83,0,0,1-107.84,0ZM96,120a32,32,0,1,1,32,32A32,32,0,0,1,96,120Zm97.76,66.41a79.66,79.66,0,0,0-36.06-28.75,48,48,0,1,0-59.4,0,79.66,79.66,0,0,0-36.06,28.75,88,88,0,1,1,131.52,0Z"/></symbol>
+      <symbol id="i-flag-checkered" viewBox="0 0 256 256"><path d="M227.32,48.75A8,8,0,0,0,218.76,50c-28,24.22-51.72,12.48-79.21-1.13C111.07,34.76,78.78,18.79,42.76,50A8,8,0,0,0,40,56V224a8,8,0,0,0,16,0V179.77c26.79-21.16,49.87-9.75,76.45,3.41,28.49,14.09,60.77,30.06,96.79-1.13a8,8,0,0,0,2.76-6V56A8,8,0,0,0,227.32,48.75ZM216,71.6v40.65c-14,11.06-27,13.22-40,10.88V79.34A60.05,60.05,0,0,0,216,71.6Zm-56,3.76v43c-6.66-2.67-13.43-6-20.45-9.48-8.82-4.37-18-8.91-27.55-12.18v-43c6.66,2.66,13.43,6,20.45,9.48C141.27,67.55,150.46,72.09,160,75.36ZM96,48.91V92.69a60.06,60.06,0,0,0-40,7.75V59.78C70,48.72,83,46.57,96,48.91ZM86.58,152A60.06,60.06,0,0,0,56,160.43V119.78c14-11.06,27-13.22,40-10.88v43.8A65.61,65.61,0,0,0,86.58,152ZM112,156.67v-43c6.66,2.66,13.43,6,20.45,9.48,8.82,4.37,18,8.9,27.55,12.17v43c-6.66-2.67-13.43-6-20.45-9.48C130.73,164.47,121.54,159.94,112,156.67Zm64,26.45v-43.8a65.61,65.61,0,0,0,9.42.72A60.11,60.11,0,0,0,216,131.57v40.68C202,183.31,189,185.46,176,183.12Z"/></symbol>
+      <symbol id="i-arrow-u-up-left" viewBox="0 0 256 256"><path d="M232,144a64.07,64.07,0,0,1-64,64H80a8,8,0,0,1,0-16h88a48,48,0,0,0,0-96H51.31l34.35,34.34a8,8,0,0,1-11.32,11.32l-48-48a8,8,0,0,1,0-11.32l48-48A8,8,0,0,1,85.66,45.66L51.31,80H168A64.07,64.07,0,0,1,232,144Z"/></symbol>
+      <symbol id="i-arrow-u-up-right" viewBox="0 0 256 256"><path d="M170.34,130.34,204.69,96H88a48,48,0,0,0,0,96h88a8,8,0,0,1,0,16H88A64,64,0,0,1,88,80H204.69L170.34,45.66a8,8,0,0,1,11.32-11.32l48,48a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32-11.32Z"/></symbol>
+      <symbol id="i-caret-down" viewBox="0 0 256 256"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></symbol>
+      <symbol id="i-lightbulb" viewBox="0 0 256 256"><path d="M176,232a8,8,0,0,1-8,8H88a8,8,0,0,1,0-16h80A8,8,0,0,1,176,232Zm40-128a87.55,87.55,0,0,1-33.64,69.21A16.24,16.24,0,0,0,176,186v6a16,16,0,0,1-16,16H96a16,16,0,0,1-16-16v-6a16,16,0,0,0-6.23-12.66A87.59,87.59,0,0,1,40,104.49C39.74,56.83,78.26,17.14,125.88,16A88,88,0,0,1,216,104Zm-16,0a72,72,0,0,0-73.74-72c-39,.92-70.47,33.39-70.26,72.39a71.65,71.65,0,0,0,27.64,56.3A32,32,0,0,1,96,186v6h64v-6a32.15,32.15,0,0,1,12.47-25.35A71.65,71.65,0,0,0,200,104Zm-16.11-9.34a57.6,57.6,0,0,0-46.56-46.55,8,8,0,0,0-2.66,15.78c16.57,2.79,30.63,16.85,33.44,33.45A8,8,0,0,0,176,104a9,9,0,0,0,1.35-.11A8,8,0,0,0,183.89,94.66Z"/></symbol>
+    </svg>
+    <main id="app" aria-busy="true">
+      <header id="player-top" class="bar player" data-position="top">
+        <div class="who">
+          <span id="name-top" class="player-name"></span>
+          <span id="note-top" class="player-note"></span>
+          <canvas id="captured-top" class="captured" aria-hidden="true"></canvas>
+          <output id="material-top" class="material"></output>
+        </div>
+        <p class="turn visually-hidden" role="status" aria-live="polite"><svg id="turn-icon" class="icon turn-icon" aria-hidden="true"><use href="#i-crown-simple" /></svg><span id="turn">Cargando…</span><span id="dots" class="dots" aria-hidden="true" hidden><i></i><i></i><i></i></span></p>
+        <div class="bar-actions">
+          <button id="home-button" class="icon-button" type="button" aria-label="Menú de inicio" title="Menú"><svg class="icon" aria-hidden="true"><use href="#i-house" /></svg></button>
+          <button id="online-button" class="chip" type="button" title="Online" aria-expanded="false" aria-controls="online-sheet"><svg class="icon" aria-hidden="true"><use href="#i-user-circle" /></svg><span id="online-label">Online</span><span class="badge">Beta</span></button>
+          <button id="bot-button" class="chip" type="button" title="Dex" aria-expanded="false" aria-controls="bot-sheet"><svg class="icon" aria-hidden="true"><use href="#i-robot" /></svg><span id="bot-label">Dex</span></button>
+          <button id="menu-button" class="icon-button" type="button" aria-expanded="false" aria-controls="menu-sheet" aria-label="Apariencia" title="Apariencia">
+            <svg class="icon" aria-hidden="true"><use href="#i-palette" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <button id="bars-toggle" class="icon-button bars-toggle" type="button" aria-label="Mostrar los controles" title="Mostrar los controles"><svg class="icon" aria-hidden="true"><use href="#i-list" /></svg></button>
+
+      <div class="match">
+
+      <div class="stage">
+        <canvas id="board" tabindex="0" role="img" aria-label="Tablero de ajedrez"></canvas>
+
+        <section id="promotion" class="overlay" aria-labelledby="promotion-title" hidden>
+          <div class="card">
+            <h1 id="promotion-title">Promocionar peón</h1>
+            <div class="promotion-choices" role="group" aria-label="Elegir pieza">
+              <button class="primary" type="button" data-promotion="q">Dama</button>
+              <button class="quiet" type="button" data-promotion="r">Torre</button>
+              <button class="quiet" type="button" data-promotion="b">Alfil</button>
+              <button class="quiet" type="button" data-promotion="n">Caballo</button>
+            </div>
+            <button id="promotion-cancel" class="quiet" type="button">Cancelar</button>
+          </div>
+        </section>
+
+        <section id="choose" class="overlay" aria-labelledby="choose-title" hidden>
+          <div class="card">
+            <h1 id="choose-title"><svg class="icon" aria-hidden="true"><use href="#i-crown-simple" /></svg>Elige tu color</h1>
+            <div class="choices">
+              <button class="choice" type="button" data-side="w"><canvas width="96" height="48" aria-hidden="true"></canvas>Blancas</button>
+              <button class="choice" type="button" data-side="random"><canvas width="96" height="48" aria-hidden="true"></canvas>Aleatorio</button>
+              <button class="choice" type="button" data-side="b"><canvas width="96" height="48" aria-hidden="true"></canvas>Negras</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="result" class="overlay" aria-labelledby="result-title" hidden>
+          <div class="card">
+            <svg id="result-icon" class="icon result-icon" aria-hidden="true"><use href="#i-trophy" /></svg>
+            <h1 id="result-title"></h1>
+            <p id="result-detail" class="detail"></p>
+            <button id="again" class="primary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-arrow-counter-clockwise" /></svg>Jugar de nuevo</button>
+            <button id="result-local" class="primary" type="button" hidden>Volver al juego local</button>
+            <div class="result-actions">
+              <button id="result-colors" class="quiet" type="button">Cambiar de color</button>
+              <button id="result-view" class="quiet" type="button">Ver tablero</button>
+            </div>
+          </div>
+        </section>
+
+        <div id="status" class="status" hidden>
+          <p id="status-text"></p>
+          <button id="status-close" class="icon-button" type="button" aria-label="Cerrar aviso"><svg class="icon" aria-hidden="true"><use href="#i-x" /></svg></button>
+        </div>
+      </div>
+
+      </div>
+
+      <div id="drawer" class="drawer" inert>
+        <div class="drawer-inner">
+          <p class="drawer-title">Nueva partida</p>
+          <div class="new-game" role="group" aria-label="Elegir color para una nueva partida">
+            <button class="new-choice" type="button" data-new="w"><span class="dot dot-w" aria-hidden="true"></span>Blancas</button>
+            <button class="new-choice" type="button" data-new="random"><svg class="icon" aria-hidden="true"><use href="#i-shuffle" /></svg>Aleatorio</button>
+            <button class="new-choice" type="button" data-new="b"><span class="dot dot-b" aria-hidden="true"></span>Negras</button>
+          </div>
+        </div>
+      </div>
+
+      <footer id="player-bottom" class="foot player" data-position="bottom">
+        <div class="who">
+          <span id="name-bottom" class="player-name"></span>
+          <span id="note-bottom" class="player-note"></span>
+          <canvas id="captured-bottom" class="captured" aria-hidden="true"></canvas>
+          <output id="material-bottom" class="material"></output>
+        </div>
+        <div class="nav">
+          <button id="undo" class="icon-button" type="button" aria-label="Deshacer jugada" title="Deshacer jugada"><svg class="icon" aria-hidden="true"><use href="#i-arrow-u-up-left" /></svg></button>
+          <button id="hint" class="icon-button" type="button" aria-label="Pista" title="Pista"><svg class="icon" aria-hidden="true"><use href="#i-lightbulb" /></svg></button>
+          <button id="redo" class="icon-button" type="button" aria-label="Rehacer jugada" title="Rehacer jugada"><svg class="icon" aria-hidden="true"><use href="#i-arrow-u-up-right" /></svg></button>
+        </div>
+        <p id="move-count" class="count visually-hidden">Jugada 1</p>
+        <button id="drawer-toggle" class="chip" type="button" aria-expanded="false" aria-controls="drawer"><svg class="icon" aria-hidden="true"><use href="#i-plus" /></svg><span>Partida</span><svg class="icon caret" aria-hidden="true"><use href="#i-caret-down" /></svg></button>
+      </footer>
+
+      <section id="bot-sheet" class="sheet" aria-labelledby="bot-title" hidden>
+        <div class="sheet-head"><h2 id="bot-title" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-robot" /></svg>Dex</h2><button class="icon-button" type="button" data-close aria-label="Cerrar Dex"><svg class="icon" aria-hidden="true"><use href="#i-x" /></svg></button></div>
+        <label class="row" for="bot-enabled"><span class="with-icon"><svg class="icon" aria-hidden="true"><use href="#i-robot" /></svg>Jugar contra Dex</span><input id="bot-enabled" class="switch" type="checkbox" role="switch" /></label>
+        <div class="row-stack">
+          <div class="row-line"><label for="bot-rating">Nivel de Dex</label><output id="bot-output" for="bot-rating">1200</output></div>
+          <input id="bot-rating" class="range" type="range" min="400" max="2000" step="50" value="1200" />
+          <div class="range-labels" aria-hidden="true"><span>400</span><span>2000</span></div>
+        </div>
+      </section>
+
+      <section id="online-sheet" class="sheet" aria-labelledby="online-title" hidden>
+        <div class="sheet-head">
+          <h2 id="online-title" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-user-circle" /></svg>Jugar online<span class="badge">Beta</span></h2>
+          <button class="icon-button" type="button" data-close aria-label="Cerrar online"><svg class="icon" aria-hidden="true"><use href="#i-x" /></svg></button>
+        </div>
+        <p id="online-message" class="hint" role="status" aria-live="polite"></p>
+        <button id="online-signin" class="primary" type="button">Entrar con Deska</button>
+        <div id="online-rooms" class="online-actions" hidden>
+          <button id="online-create" class="primary" type="button">Crear sala privada</button>
+          <form id="online-join-form" class="online-join">
+            <label for="online-code">Código de sala</label>
+            <div class="online-code-row">
+              <input id="online-code" name="room" type="text" maxlength="6" minlength="6" pattern="[A-Za-z0-9]{6}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="6 caracteres" required>
+              <button id="online-join" class="quiet" type="submit">Unirme</button>
+            </div>
+          </form>
+        </div>
+        <section id="online-presence" class="presence" aria-labelledby="presence-title" hidden>
+          <div class="presence-head">
+            <h3 id="presence-title">Jugadores conectados</h3>
+            <output id="presence-count" class="presence-count"></output>
+          </div>
+          <ul id="presence-list" class="presence-list"></ul>
+          <p id="presence-note" class="hint" role="status"></p>
+        </section>
+        <button id="online-resume" class="quiet" type="button" hidden>Recuperar última sala</button>
+        <div id="online-room" class="online-actions" hidden>
+          <label for="online-code-display">Código para invitar</label>
+          <output id="online-code-display" class="room-code"></output>
+          <p id="online-room-status" class="hint"></p>
+          <button id="online-retry" class="primary" type="button" hidden>Reconectar</button>
+        </div>
+        <p class="hint">Volver al juego local conserva tu sala para retomarla después.</p>
+        <button id="online-local" class="quiet" type="button">Volver al juego local</button>
+      </section>
+
+      <section id="menu-sheet" class="sheet" aria-labelledby="menu-title" hidden>
+        <div class="sheet-head"><h2 id="menu-title" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-palette" /></svg>Apariencia</h2><button class="icon-button" type="button" data-close aria-label="Cerrar apariencia"><svg class="icon" aria-hidden="true"><use href="#i-x" /></svg></button></div>
+        <h3>Colores</h3>
+        <div class="grid" role="group" aria-label="Colores del tablero">
+          <button class="tile" type="button" data-palette="app" aria-pressed="false"><span class="swatch" aria-hidden="true"></span>App</button>
+          <button class="tile" type="button" data-palette="ocean" aria-pressed="false"><span class="swatch" aria-hidden="true"></span>Océano</button>
+          <button class="tile" type="button" data-palette="walnut" aria-pressed="false"><span class="swatch" aria-hidden="true"></span>Nogal</button>
+          <button class="tile" type="button" data-palette="slate" aria-pressed="false"><span class="swatch" aria-hidden="true"></span>Pizarra</button>
+        </div>
+        <h3>Piezas</h3>
+        <div class="grid" role="group" aria-label="Estilo de las piezas">
+          <button class="tile" type="button" data-piece-set="prism" title="Futurista · Prisma" aria-pressed="false"><canvas class="preview" width="96" height="48" aria-hidden="true"></canvas>Prisma</button>
+          <button class="tile" type="button" data-piece-set="trace" title="Neo caótico · Trazo" aria-pressed="false"><canvas class="preview" width="96" height="48" aria-hidden="true"></canvas>Trazo</button>
+          <button class="tile" type="button" data-piece-set="orbit" title="Futurista · Órbita" aria-pressed="false"><canvas class="preview" width="96" height="48" aria-hidden="true"></canvas>Órbita</button>
+          <button class="tile" type="button" data-piece-set="classic" aria-pressed="false"><canvas class="preview" width="96" height="48" aria-hidden="true"></canvas>Clásico</button>
+        </div>
+        <label class="row" for="coordinates"><span>Mostrar coordenadas</span><input id="coordinates" class="switch" type="checkbox" role="switch" /></label>
+        <label class="row" for="full-board"><span>Tablero a pantalla completa</span><input id="full-board" class="switch" type="checkbox" role="switch" /></label>
+        <div class="sheet-foot">
+          <button id="restart" class="primary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-arrow-counter-clockwise" /></svg>Reiniciar</button>
+          <button id="reset-settings" class="quiet" type="button">Restablecer ajustes</button>
+        </div>
+      </section>
+
+
+      <section id="home" class="home" aria-labelledby="home-title" hidden>
+        <header class="home-head">
+          <h1 id="home-title" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#i-crown-simple" /></svg>Chess</h1>
+          <div class="home-head-end">
+            <span id="home-who" class="home-who" hidden><span id="home-who-avatar" class="avatar" aria-hidden="true"></span><span id="home-who-name"></span></span>
+            <button id="home-close" class="icon-button" type="button" aria-label="Volver al tablero" title="Volver al tablero" hidden><svg class="icon" aria-hidden="true"><use href="#i-x" /></svg></button>
+          </div>
+        </header>
+        <p id="home-note" class="home-note" role="status" aria-live="polite"></p>
+
+        <section id="home-challenges" aria-labelledby="home-challenges-title" hidden>
+          <h2 id="home-challenges-title">Retos</h2>
+          <ul id="home-challenges-list" class="home-list"></ul>
+        </section>
+
+        <section id="home-continue" aria-labelledby="home-continue-title" hidden>
+          <h2 id="home-continue-title">Continuar</h2>
+          <ul id="home-continue-list" class="home-list"></ul>
+        </section>
+
+        <section id="home-new" aria-labelledby="home-new-title">
+          <h2 id="home-new-title">Nueva partida</h2>
+          <div class="home-new-buttons">
+            <button id="home-bot" class="primary" type="button">Contra Dex</button>
+            <button id="home-two" class="quiet" type="button">Dos en un tablero</button>
+          </div>
+          <div class="home-level">
+            <label for="home-level">Nivel de Dex</label>
+            <input id="home-level" class="range" type="range" min="400" max="2000" step="50" value="1200" />
+            <output id="home-level-output" for="home-level">1200</output>
+          </div>
+        </section>
+
+        <section id="home-people" aria-labelledby="home-people-title">
+          <h2 id="home-people-title">Con personas<span class="badge">Beta</span></h2>
+          <p id="home-people-intro" class="hint"></p>
+          <button id="home-signin" class="primary" type="button">Entrar con Deska</button>
+          <div id="home-online" hidden>
+            <div id="home-unshared" class="home-unshared" hidden>
+              <p id="home-me" class="home-me"></p>
+              <button id="home-share" class="pill" type="button">Compartir mi nombre</button>
+            </div>
+            <form id="home-search-form" class="home-search" role="search">
+              <label for="home-search" class="visually-hidden">Buscar a una persona por su nombre</label>
+              <svg class="icon home-search-icon" aria-hidden="true"><use href="#i-magnifying-glass" /></svg>
+              <input id="home-search" name="q" type="search" minlength="3" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Buscar a alguien por su nombre">
+            </form>
+            <ul id="home-results" class="home-list"></ul>
+            <p id="home-search-note" class="hint" role="status" aria-live="polite"></p>
+            <h3 id="home-recent-title">Tus rivales</h3>
+            <ul id="home-recent" class="home-list"></ul>
+            <p id="home-recent-empty" class="home-empty">Aquí aparecerán las personas con las que juegues, con quién está conectado.</p>
+            <button id="home-code" class="quiet" type="button">Sala privada con código</button>
+          </div>
+        </section>
+      </section>
+
+      <p id="announce" class="visually-hidden" aria-live="polite"></p>
+      <p id="alert" class="visually-hidden" role="alert"></p>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,1626 @@
+/* Every color, font and radius comes from Deska's theme tokens, which the SDK writes on <html>.
+   The board squares and pieces are the one exception: they are the game's own colors. */
+
+.online-actions, .online-join { display: grid; gap: 10px; }
+.online-code-row { display: flex; gap: 8px; }
+.online-code-row input {
+  width: 100%; min-width: 0; padding: 9px 10px;
+  border: 1px solid var(--deska-border); border-radius: var(--deska-radius-small);
+  background: var(--deska-bg); color: var(--deska-text);
+  text-transform: uppercase; font-variant-numeric: tabular-nums;
+}
+.online-code-row input::placeholder { color: var(--deska-text-secondary); text-transform: none; }
+.room-code { font-size: 24px; font-weight: 650; letter-spacing: .12em; user-select: all; }
+.promotion-choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
+#online-sheet { gap: 14px; }
+#online-label { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* The ground is Deska's own, tinted a few percent toward its accent so the board, the player
+   lines and the controls read as one object. Everything else derives from the same tokens. */
+:root {
+  --ground: color-mix(in srgb, var(--deska-accent) 4%, var(--deska-bg));
+  --line: color-mix(in srgb, var(--deska-accent) 9%, var(--deska-border));
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--deska-text);
+  font: 13px/1.45 var(--deska-font-ui);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.no-transitions *,
+.no-transitions *::before,
+.no-transitions *::after {
+  transition: none !important;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--deska-focus);
+  outline-offset: 1px;
+}
+
+svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: currentColor;
+  stroke: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Layout ----------------------------------------------------------------- */
+
+#app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 2px 10px 2px 14px;
+}
+
+.turn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+#turn {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.turn-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-ink, var(--deska-accent));
+}
+
+.turn-icon[data-tone='danger'] {
+  color: var(--deska-danger);
+}
+
+.dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--deska-text-secondary);
+}
+
+.bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* The match: the opponent's line, the board, your line. The board is square, so the stage takes
+   its height from its width and the block centers in what is left; nothing is left empty. */
+.match {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+.stage {
+  position: relative;
+  flex: 0 1 auto;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 1;
+}
+
+#board {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  /* The board is the one raised thing: a soft shadow below it, declared once. */
+  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--deska-text) 14%, transparent));
+}
+
+#board:focus-visible {
+  outline-offset: -3px;
+}
+
+/* Notices sit over the top of the board, never over the controls below it, and take only
+   their own rectangle, so the board around them keeps working. */
+.status {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 3px 3px 3px 12px;
+  border: 1px solid var(--deska-border);
+  border-radius: var(--deska-radius-small);
+  background: var(--deska-surface-raised);
+  color: var(--deska-text);
+  font-size: 12px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--deska-bg) 60%, transparent);
+}
+
+.status p {
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.status.is-error {
+  border-color: color-mix(in srgb, var(--deska-danger) 55%, var(--deska-border));
+}
+
+.status.is-error p {
+  color: var(--deska-danger);
+}
+
+.status .icon-button {
+  width: 28px;
+  min-height: 28px;
+}
+
+/* Buttons ---------------------------------------------------------------- */
+
+.quiet,
+.primary,
+.icon-button,
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  border: 0;
+  border-radius: var(--deska-radius-small);
+  white-space: nowrap;
+  transition-property: background-color, color, scale;
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
+}
+
+.quiet,
+.chip,
+.icon-button {
+  background: transparent;
+  color: var(--deska-text-secondary);
+}
+
+.quiet {
+  padding: 0 10px;
+}
+
+.chip {
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.icon-button {
+  width: 32px;
+  padding: 0;
+}
+
+.quiet:hover,
+.chip:hover,
+.icon-button:hover,
+.chip[aria-expanded='true'],
+.icon-button[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--deska-text) 8%, transparent);
+  color: var(--deska-text);
+}
+
+.primary {
+  padding: 0 14px;
+  background: var(--deska-accent);
+  color: var(--deska-on-accent);
+  font-weight: 500;
+}
+
+.primary:hover {
+  background: color-mix(in srgb, var(--deska-accent) 88%, var(--deska-text));
+}
+
+.primary:disabled,
+.quiet:disabled {
+  background: var(--deska-surface-raised);
+  color: var(--deska-text-secondary);
+  cursor: not-allowed;
+  scale: 1;
+}
+
+.quiet:active,
+.primary:active,
+.icon-button:active,
+.chip:active {
+  scale: 0.96;
+}
+
+/* Overlays: the color choice and the result ---------------------------------- */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--deska-bg) 82%, transparent);
+}
+
+.card {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(100%, 360px);
+  padding: 18px 16px 16px;
+  border: 1px solid var(--deska-border);
+  border-radius: var(--deska-radius);
+  background: var(--deska-surface);
+}
+
+.card h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.card h1 .icon {
+  color: var(--accent-ink, var(--deska-accent));
+  width: 20px;
+  height: 20px;
+}
+
+.result-icon {
+  width: 36px;
+  height: 36px;
+  color: var(--accent-ink, var(--deska-accent));
+}
+
+.detail {
+  color: var(--deska-text-secondary);
+  text-align: center;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.choice {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px 4px 8px;
+  border: 1px solid var(--deska-border);
+  border-radius: var(--deska-radius-small);
+  background: var(--deska-surface-raised);
+  font-size: 12px;
+  transition-property: border-color, background-color, scale;
+  transition-duration: 120ms;
+  transition-timing-function: ease-out;
+}
+
+.choice canvas {
+  width: 100%;
+  max-width: 72px;
+  aspect-ratio: 2;
+}
+
+.choice:hover {
+  border-color: var(--accent-ink, var(--deska-accent));
+}
+
+.choice:active {
+  scale: 0.97;
+}
+
+/* Sheets: bot and appearance ------------------------------------------------- */
+
+.sheet {
+  position: absolute;
+  top: 44px;
+  right: 8px;
+  z-index: 2;
+  display: grid;
+  gap: 4px;
+  width: min(320px, calc(100% - 16px));
+  max-height: calc(100% - 52px);
+  padding: 12px 14px 14px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--deska-border);
+  border-radius: var(--deska-radius);
+  background: var(--deska-surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--deska-bg) 70%, transparent);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.sheet h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.sheet h2 .icon {
+  color: var(--accent-ink, var(--deska-accent));
+}
+
+.with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheet h3 {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--deska-text-secondary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.row-stack {
+  display: grid;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.row-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--deska-text-tertiary);
+  font-size: 11px;
+}
+
+.range {
+  width: 100%;
+  accent-color: var(--accent-ink, var(--deska-accent));
+}
+
+.hint {
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--deska-border);
+  border-radius: 10px;
+  background: var(--deska-surface-raised);
+  cursor: pointer;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--deska-text-secondary);
+  transition: translate 120ms ease-out, background-color 120ms ease-out;
+}
+
+.switch:checked {
+  border-color: var(--deska-accent);
+  background: var(--deska-accent);
+}
+
+.switch:checked::after {
+  translate: 14px 0;
+  background: var(--deska-on-accent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tile {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 5px;
+  padding: 5px 3px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--deska-radius-small);
+  background: transparent;
+  font-size: 11px;
+}
+
+.tile:hover {
+  background: color-mix(in srgb, var(--deska-text) 8%, transparent);
+}
+
+.tile[aria-pressed='true'] {
+  border-color: var(--accent-ink, var(--deska-accent));
+  color: var(--accent-ink, var(--deska-accent));
+}
+
+.swatch {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: conic-gradient(var(--swatch-dark) 0deg 90deg, var(--swatch-light) 90deg 180deg, var(--swatch-dark) 180deg 270deg, var(--swatch-light) 270deg);
+  background-size: 50% 50%;
+}
+
+.preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2;
+}
+
+.sheet-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--deska-border);
+}
+
+@media (max-width: 260px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Motion: only for people who have not asked for less. Each piece of it says something:
+   a panel arriving, a state changing, the bot working. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .overlay {
+    animation: fade-in 200ms ease-out;
+  }
+
+  .card {
+    animation: rise 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .choice {
+    animation: rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+
+  .choice:nth-child(2) {
+    animation-delay: 60ms;
+  }
+
+  .choice:nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .choice:hover {
+    translate: 0 -2px;
+  }
+
+  .sheet:not([hidden]) {
+    animation: sheet-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .result-icon {
+    animation: pop 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .turn.is-thinking .turn-icon {
+    animation: breathe 1.1s ease-in-out infinite;
+  }
+
+  .dots i {
+    animation: dot 900ms ease-in-out infinite;
+  }
+
+  .dots i:nth-child(2) {
+    animation-delay: 150ms;
+  }
+
+  .dots i:nth-child(3) {
+    animation-delay: 300ms;
+  }
+
+  .tile,
+  .switch {
+    transition: background-color 120ms ease-out, border-color 120ms ease-out, scale 120ms ease-out;
+  }
+
+  .tile:active {
+    scale: 0.95;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes rise {
+  from { opacity: 0; translate: 0 10px; scale: 0.97; }
+}
+
+@keyframes sheet-in {
+  from { opacity: 0; translate: 0 -6px; }
+}
+
+@keyframes pop {
+  0% { scale: 0.4; opacity: 0; }
+  60% { scale: 1.15; opacity: 1; }
+  100% { scale: 1; }
+}
+
+@keyframes breathe {
+  50% { scale: 1.18; opacity: 0.7; }
+}
+
+@keyframes dot {
+  40% { translate: 0 -4px; background: var(--accent-ink, var(--deska-accent)); }
+}
+
+/* Bottom bar and the collapsible new-game drawer ------------------------------------- */
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 2px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.nav {
+  display: flex;
+  gap: 2px;
+}
+
+.count {
+  color: var(--deska-text-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.caret {
+  width: 12px;
+  height: 12px;
+  transition: rotate 200ms ease-out;
+}
+
+#drawer-toggle[aria-expanded='true'] .caret {
+  rotate: 180deg;
+}
+
+/* Collapses to nothing, so a closed drawer costs the board no space. */
+.drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease-out;
+}
+
+.drawer:not([inert]) {
+  grid-template-rows: 1fr;
+}
+
+.drawer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 14px;
+  border-top: 1px solid transparent;
+}
+
+.drawer:not([inert]) .drawer-inner {
+  padding: 8px 14px;
+  border-top-color: var(--deska-border);
+}
+
+.drawer-title {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--deska-text-secondary);
+}
+
+.new-game {
+  display: flex;
+  gap: 6px;
+}
+
+.new-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--deska-border);
+  border-radius: var(--deska-radius-small);
+  background: var(--deska-surface-raised);
+  font-size: 12px;
+  transition: border-color 120ms ease-out, scale 120ms ease-out;
+}
+
+.new-choice:hover {
+  border-color: var(--accent-ink, var(--deska-accent));
+}
+
+.new-choice:active {
+  scale: 0.96;
+}
+
+.new-choice .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-w {
+  background: #fffdf5;
+  border: 1px solid var(--deska-text-secondary);
+}
+
+.dot-b {
+  background: #202725;
+  border: 1px solid var(--deska-text-secondary);
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.icon-button:disabled:hover {
+  background: transparent;
+  color: var(--deska-text-secondary);
+}
+
+@media (max-width: 330px) {
+  .drawer-title {
+    display: none;
+  }
+}
+
+/* Result card and the hint button ------------------------------------------------------- */
+
+.card .primary {
+  width: 100%;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.result-icon[data-tone='lose'] {
+  color: var(--deska-danger);
+}
+
+.result-icon[data-tone='draw'] {
+  color: var(--deska-text-secondary);
+}
+
+#hint[aria-busy='true'] {
+  color: var(--accent-ink, var(--deska-accent));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The card waits for the last piece to land before it covers the board. */
+  #result {
+    animation: fade-in 260ms ease-out 480ms backwards;
+  }
+
+  #result .card {
+    animation: rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1) 480ms backwards;
+  }
+
+  #result .result-icon {
+    animation: pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 620ms backwards;
+  }
+
+  #hint[aria-busy='true'] .icon {
+    animation: breathe 0.9s ease-in-out infinite;
+  }
+}
+
+/* Online lobby: who is connected right now ---------------------------------------------- */
+
+.presence { display: grid; gap: 6px; }
+.presence-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.presence-head h3 { margin: 0; }
+.presence-count { color: var(--deska-text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.presence-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.presence-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 2px;
+}
+.presence-row + .presence-row { border-top: 1px solid color-mix(in srgb, var(--deska-border) 60%, transparent); }
+.presence-avatar {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--deska-surface-raised);
+  color: var(--deska-text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+.presence-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.presence-self { color: var(--deska-text-secondary); }
+.presence-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+/* The dot repeats the label, so color is never the only signal. */
+.presence-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--deska-text-tertiary);
+}
+.presence-row[data-status='available'] .presence-status { color: var(--deska-text); }
+.presence-row[data-status='available'] .presence-status::before {
+  border-color: var(--accent-ink, var(--deska-accent));
+  background: var(--accent-ink, var(--deska-accent));
+}
+.presence-row[data-status='available'] .presence-avatar {
+  background: color-mix(in srgb, var(--deska-accent) 16%, var(--deska-surface-raised));
+  color: var(--deska-text);
+}
+.presence-row.is-skeleton span { display: block; height: 10px; border-radius: 5px; background: var(--deska-surface-raised); }
+.presence-row.is-skeleton span:first-child { width: 24px; height: 24px; border-radius: 50%; }
+.presence-row.is-skeleton span:last-child { width: 60%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .presence-row:not(.is-skeleton) { animation: rise 240ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+  .presence-row:nth-child(2) { animation-delay: 40ms; }
+  .presence-row:nth-child(3) { animation-delay: 80ms; }
+  .presence-row:nth-child(n + 4) { animation-delay: 120ms; }
+  .presence-row.is-skeleton span { animation: breathe 1.2s ease-in-out infinite; }
+}
+
+/* Online is in beta: a small tag next to its name. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--deska-accent) 14%, transparent);
+  color: var(--deska-text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.chip .badge {
+  height: 15px;
+  margin-left: 2px;
+  padding: 0 3px;
+}
+
+.bar .chip {
+  padding: 0 7px;
+}
+
+.bar {
+  gap: 6px;
+  padding-left: 12px;
+}
+
+.bar-actions {
+  gap: 2px;
+}
+
+@media (max-width: 340px) {
+  .chip .badge {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .status:not([hidden]) {
+    animation: sheet-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+/* Player lines ---------------------------------------------------------------------------- */
+
+/* The opponent's line is the top bar and yours is the footer, so the board gets the room the lines used to take.
+   Their content lines up with the board's left edge, which app.js writes into --board-left (at most 28px in). */
+.player {
+  --edge: min(var(--board-left, 12px), 28px);
+  position: relative;
+  padding-inline: var(--edge);
+  font-variant-numeric: tabular-nums;
+}
+
+.who {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.player-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-note {
+  flex: none;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.player-note[data-tone='danger'] {
+  color: var(--deska-danger);
+  font-weight: 600;
+}
+
+.player-note[data-code] {
+  color: var(--deska-text);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  user-select: all;
+}
+
+.captured {
+  flex: none;
+  margin-left: 2px;
+}
+
+.captured[width='1'] {
+  display: none;
+}
+
+.material {
+  flex: none;
+  min-width: 2ch;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.material:empty {
+  display: none;
+}
+
+/* The toolbar buttons are icons; their names stay for assistive tech and in the tooltip. */
+#online-label,
+#bot-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.bar-actions .chip {
+  min-width: 32px;
+  padding: 0 8px;
+}
+
+/* The turn line: a 2px accent line on the board-facing edge of the side to move. */
+.player::after {
+  content: '';
+  position: absolute;
+  left: var(--edge);
+  width: calc(100% - var(--edge) * 2);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent-ink, var(--deska-accent));
+  opacity: 0;
+  scale: 0 1;
+  transform-origin: left center;
+}
+
+.player[data-position='top']::after { bottom: 0; }
+.player[data-position='bottom']::after { top: 0; }
+
+.player[data-active='true']::after {
+  opacity: 1;
+  scale: 1 1;
+}
+
+.player[data-active='true'] .player-name {
+  color: var(--deska-text);
+}
+
+.player[data-active='false'] .player-name {
+  color: var(--deska-text-secondary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .player::after {
+    transition: scale 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 160ms ease-out;
+  }
+
+  .player[data-position='bottom']::after { transform-origin: right center; }
+}
+
+@media (max-width: 350px) {
+  #drawer-toggle span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+/* A wide panel: the board takes the height, and the two bars become one group beside it, centered
+   on the board, so the space left over is quiet margin on both sides of it and not a hole. */
+@media (min-aspect-ratio: 8/5) and (min-width: 520px) {
+  #app:not([data-full='true']) {
+    display: grid;
+    /* The board takes the height; the side column is only as wide as its controls need (about 230px)
+       and the pair is centered, so a very wide panel gets margins and not a big empty sidebar. */
+    grid-template-columns: min(100vh, calc(100vw - 230px)) minmax(210px, 230px);
+    grid-template-rows: 1fr auto auto auto 1fr;
+    justify-content: center;
+  }
+
+  #app:not([data-full='true']) .match { grid-column: 1; grid-row: 1 / -1; }
+  #app:not([data-full='true']) .bar { grid-column: 2; grid-row: 2; border-bottom: 1px solid var(--line); }
+  #app:not([data-full='true']) .drawer { grid-column: 2; grid-row: 3; }
+  #app:not([data-full='true']) .foot { grid-column: 2; grid-row: 4; flex-wrap: wrap; }
+  #app:not([data-full='true']) .foot .who,
+  #app:not([data-full='true']) .bar .who { flex-basis: 100%; }
+  #app:not([data-full='true']) .bar { flex-wrap: wrap; padding-bottom: 2px; }
+  #app:not([data-full='true']) .bar-actions { margin-left: -8px; }
+  #app:not([data-full='true']) .player { --edge: 12px; }
+}
+
+/* Before a side is chosen the board is covered; the lines would only repeat the card. */
+#app[data-phase='choose'] .who,
+#app[data-phase='choose'] .player::after {
+  visibility: hidden;
+}
+
+/* Home: the first thing you see each time the panel opens ----------------------------------------- */
+
+/* The ground carries a soft wash of the person's accent from the top corner; everything else is
+   hairlines and one raised surface (the game to continue), declared once. */
+.home {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 0 14px 22px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(130% 55% at 0% 0%, color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 9%, transparent), transparent 62%),
+    var(--ground);
+}
+
+/* The title bar and the latest message stay in view while the lists scroll. */
+.home-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  margin-inline: -14px;
+  padding-inline: 14px;
+  background: color-mix(in srgb, var(--ground) 90%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.home h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 19px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+.home h1:focus {
+  outline: none;
+}
+
+.home h1 .icon {
+  width: 22px;
+  height: 22px;
+  color: var(--accent-ink, var(--deska-accent));
+}
+
+.home-head-end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 150px;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.home-who #home-who-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home h2 {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.home h3 {
+  margin: 14px 0 2px;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.home > section {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.home .badge {
+  margin-left: 6px;
+}
+
+.home-note {
+  position: sticky;
+  top: 46px;
+  z-index: 1;
+  margin: -22px -14px -8px;
+  padding: 6px 14px 8px;
+  background: color-mix(in srgb, var(--ground) 90%, transparent);
+  color: var(--deska-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.home-note:empty {
+  display: none;
+}
+
+/* Rows --------------------------------------------------------------------------------------- */
+
+.home-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.home-list > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.home-row-text {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+}
+
+.home-row-title {
+  overflow: hidden;
+  font-weight: 620;
+  letter-spacing: -0.005em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-row-sub {
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+}
+
+.home-row-actions {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+}
+
+/* A person: a circle with their initial, and a mark on it for "connected" (filled) or "in a game"
+   (a ring). The row says it in words as well. */
+.avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 20%, var(--deska-surface-raised));
+  color: var(--deska-text);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.home-who .avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+.avatar[data-status]::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  box-sizing: border-box;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--ground);
+  border-radius: 50%;
+}
+
+.avatar[data-status='available']::after {
+  background: var(--accent-ink, var(--deska-accent));
+}
+
+.avatar[data-status='playing']::after {
+  background: var(--ground);
+  box-shadow: inset 0 0 0 2px var(--accent-ink, var(--deska-accent));
+}
+
+.avatar[data-status='offline']::after {
+  display: none;
+}
+
+/* The one raised thing: the game you can continue. */
+.home-list.home-continue-list,
+#home-continue-list {
+  gap: 8px;
+}
+
+#home-continue-list > li + li {
+  border-top: 0;
+}
+
+.home-continue {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px 8px 8px;
+  border-radius: 12px;
+  background: var(--deska-surface);
+  transition: background-color 120ms ease-out, scale 120ms ease-out;
+}
+
+.home-continue:hover {
+  background: color-mix(in srgb, var(--deska-text) 6%, var(--deska-surface));
+}
+
+.home-continue:active {
+  scale: 0.99;
+}
+
+.home-continue .home-row-title {
+  font-size: 15px;
+}
+
+.home-mini {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 7px;
+}
+
+.home-mini-online {
+  background: var(--deska-surface-raised);
+  color: var(--deska-text-secondary);
+}
+
+.home-mini-online .icon {
+  width: 26px;
+  height: 26px;
+}
+
+.home-go,
+.pill {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 55%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--deska-text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 120ms ease-out, scale 120ms ease-out;
+}
+
+.home-go {
+  background: color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 18%, transparent);
+}
+
+.pill:hover,
+.home-continue:hover .home-go {
+  background: color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 30%, transparent);
+}
+
+.pill:active {
+  scale: 0.96;
+}
+
+.pill:disabled {
+  border-color: var(--deska-border);
+  color: var(--deska-text-secondary);
+  cursor: not-allowed;
+}
+
+/* New game ------------------------------------------------------------------------------------ */
+
+.home-new-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+#home-bot {
+  flex: 1;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 620;
+}
+
+#home-two {
+  flex: none;
+  min-height: 44px;
+  border: 1px solid var(--line);
+}
+
+#home-signin {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.home-level {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  align-items: center;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+}
+
+.home-level .range {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.home-level output {
+  color: var(--deska-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* People -------------------------------------------------------------------------------------- */
+
+.home-unshared {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  justify-content: space-between;
+}
+
+.home-me {
+  flex: 1 1 200px;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.home-search {
+  position: relative;
+}
+
+.home-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  translate: 0 -50%;
+  color: var(--deska-text-tertiary);
+  pointer-events: none;
+}
+
+.home-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 12px 9px 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--deska-radius);
+  background: var(--deska-bg);
+  color: var(--deska-text);
+}
+
+.home-search input::-webkit-search-cancel-button {
+  appearance: none;
+  display: none;
+}
+
+.home-search input::placeholder {
+  color: var(--deska-text-secondary);
+}
+
+.home-empty {
+  padding: 10px 0 2px;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* One orchestrated arrival: the sections rise in order, then the rows inside them. */
+  .home:not([hidden]) {
+    animation: fade-in 180ms ease-out;
+  }
+
+  .home:not([hidden]) > section,
+  .home:not([hidden]) .home-list > li {
+    animation: rise 460ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  .home > section:nth-of-type(2) { animation-delay: 50ms; }
+  .home > section:nth-of-type(3) { animation-delay: 100ms; }
+  .home > section:nth-of-type(4) { animation-delay: 150ms; }
+  .home .home-list > li:nth-child(2) { animation-delay: 60ms; }
+  .home .home-list > li:nth-child(3) { animation-delay: 110ms; }
+}
+
+
+/* Full board (an option in Appearance) ----------------------------------------------------------- */
+
+/* The board takes the whole panel. The two bars float over its top and bottom edges and put themselves
+   away; a small button brings them back. The turn is still on screen: a line along the edge of the side to move. */
+#app[data-full='true'] {
+  display: block;
+}
+
+#app[data-full='true'] .match {
+  position: absolute;
+  inset: 0;
+}
+
+#app[data-full='true'] .stage {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+#app[data-full='true'] .bar,
+#app[data-full='true'] .foot {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  background: color-mix(in srgb, var(--ground) 84%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+#app[data-full='true'] .bar { top: 0; border-bottom-color: transparent; }
+#app[data-full='true'] .foot { bottom: 0; }
+
+#app[data-full='true'] .drawer {
+  position: absolute;
+  right: 0;
+  bottom: 36px;
+  left: 0;
+  z-index: 3;
+  background: color-mix(in srgb, var(--ground) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+/* Closed, the drawer is one pixel tall; it must not paint a line over the board. */
+#app[data-full='true'] .drawer[inert] {
+  visibility: hidden;
+}
+
+#app[data-full='true'] .player[data-position='top']::after { top: 0; bottom: auto; }
+#app[data-full='true'] .player[data-position='bottom']::after { top: auto; bottom: 0; }
+
+#app[data-full='true']:not([data-bars='open']):not([data-phase='choose']):not([data-phase='over']) :is(.bar, .foot) {
+  background: transparent;
+  backdrop-filter: none;
+  border-color: transparent;
+  pointer-events: none;
+}
+
+#app[data-full='true']:not([data-bars='open']):not([data-phase='choose']):not([data-phase='over']) :is(.bar, .foot) > :not(.visually-hidden) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #app[data-full='true'] .bar, #app[data-full='true'] .foot { transition: background-color 180ms ease-out; }
+  .bar > *, .foot > * { transition: opacity 160ms ease-out; }
+}
+
+.bars-toggle {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 3;
+  display: none;
+  background: color-mix(in srgb, var(--ground) 70%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+#app[data-full='true']:not([data-bars='open']):not([data-phase='choose']):not([data-phase='over']) .bars-toggle {
+  display: inline-flex;
+}
+
+.sheet {
+  z-index: 4;
+}

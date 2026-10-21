@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "chess",
+  "name": "Chess",
+  "version": "1.1.0",
+  "description": "Play chess against a bot or on one board, with drag and drop, premoves, analysis arrows and a home screen that keeps your game.",
+  "author": "Pasho",
+  "icon": "icon.svg",
+  "color": "#ff7a5c",
+  "category": "other",
+  "permissions": [],
+  "network": [],
+  "sdk": 1,
+  "contributes": {
+    "panel": {
+      "entry": "index.html",
+      "scope": "workspace",
+      "size": {
+        "width": 420,
+        "height": 505
+      }
+    }
+  }
+}
