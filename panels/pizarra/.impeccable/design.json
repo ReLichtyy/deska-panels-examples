@@ -1,0 +1,124 @@
+{
+    "schemaVersion":  2,
+    "generatedAt":  "2026-10-19T07:06:11Z",
+    "title":  "Design System: Pizarra",
+    "extensions":  {
+                       "shadows":  [
+                                       {
+                                           "name":  "floating",
+                                           "value":  "0 4px 16px rgb(0 0 0 / .16)",
+                                           "purpose":  "Toolbar, contextual settings, menu, and history surfaces."
+                                       },
+                                       {
+                                           "name":  "toast",
+                                           "value":  "0 3px 15px rgb(0 0 0 / .18)",
+                                           "purpose":  "Transient operation feedback."
+                                       },
+                                       {
+                                           "name":  "confirmation",
+                                           "value":  "0 8px 36px rgb(0 0 0 / .3)",
+                                           "purpose":  "Clear-board confirmation."
+                                       },
+                                       {
+                                           "name":  "project-dialog",
+                                           "value":  "0 8px 32px rgb(0 0 0 / .25)",
+                                           "purpose":  "Project JSON dialog."
+                                       },
+                                       {
+                                           "name":  "selected-control",
+                                           "value":  "inset 0 -2px 0 var(--active)",
+                                           "purpose":  "Additional visible selected-button indicator."
+                                       }
+                                   ],
+                       "motion":  [
+                                      {
+                                          "name":  "button-state",
+                                          "value":  "background-color 120ms ease-out, color 120ms ease-out",
+                                          "purpose":  "Button feedback; removed under prefers-reduced-motion: reduce."
+                                      }
+                                  ],
+                       "breakpoints":  [
+                                           {
+                                               "name":  "compact",
+                                               "value":  "760px"
+                                           },
+                                           {
+                                               "name":  "single-row-primary-grid",
+                                               "value":  "470px"
+                                           }
+                                       ],
+                       "colorMeta":  {
+                                         "canvas-muted-dark":  {
+                                                                   "displayName":  "Dark-board overlay text",
+                                                                   "role":  "neutral"
+                                                               },
+                                         "canvas-muted-light":  {
+                                                                    "displayName":  "Light-board overlay text",
+                                                                    "role":  "neutral"
+                                                                }
+                                     }
+                   },
+    "components":  [
+                       {
+                           "name":  "Tool button",
+                           "kind":  "button",
+                           "refersTo":  "tool",
+                           "description":  "Selected rectangle tool with an outline icon and Spanish accessible name.",
+                           "html":  "\u003cbutton class=\"ds-tool\" type=\"button\" aria-label=\"Rectángulo\" aria-pressed=\"true\" title=\"Rectángulo (R)\"\u003e\u003csvg viewBox=\"0 0 16 16\" aria-hidden=\"true\"\u003e\u003crect x=\"2.5\" y=\"4\" width=\"11\" height=\"8\" rx=\"1\"/\u003e\u003c/svg\u003e\u003c/button\u003e",
+                           "css":  ".ds-tool{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:7px;border:0;border-radius:6px;background:var(--active-bg,#403b67);color:var(--active,#aaa2ff);box-shadow:inset 0 -2px 0 var(--active,#aaa2ff);cursor:pointer;transition:background-color 120ms ease-out,color 120ms ease-out}.ds-tool svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}.ds-tool:hover{background:color-mix(in srgb,var(--fg,#e4e4ea) 9%,transparent);color:var(--fg,#e4e4ea)}.ds-tool:focus-visible{outline:2px solid var(--active,#aaa2ff);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-tool{transition:none}}"
+                       },
+                       {
+                           "name":  "Primary action",
+                           "kind":  "button",
+                           "refersTo":  "button",
+                           "description":  "Compact labeled action used for compiling or copying.",
+                           "html":  "\u003cbutton class=\"ds-primary\" type=\"button\"\u003eCompilar\u003c/button\u003e",
+                           "css":  ".ds-primary{min-height:32px;min-width:32px;padding:5px 9px;border:0;border-radius:6px;background:var(--active-bg,#403b67);color:var(--active,#aaa2ff);font:600 12px/1.45 var(--deska-font-ui,\u0027Segoe UI\u0027,sans-serif);cursor:pointer;transition:background-color 120ms ease-out,color 120ms ease-out}.ds-primary:hover{background:color-mix(in srgb,var(--fg,#e4e4ea) 9%,transparent);color:var(--fg,#e4e4ea)}.ds-primary:focus-visible{outline:2px solid var(--active,#aaa2ff);outline-offset:3px}.ds-primary:disabled{opacity:.4;cursor:default}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
+                       },
+                       {
+                           "name":  "Secondary action",
+                           "kind":  "button",
+                           "refersTo":  "button",
+                           "description":  "Quiet action with host text color and hover tint.",
+                           "html":  "\u003cbutton class=\"ds-secondary\" type=\"button\"\u003eCerrar\u003c/button\u003e",
+                           "css":  ".ds-secondary{min-height:32px;min-width:32px;padding:5px 9px;border:0;border-radius:6px;background:transparent;color:var(--muted,#b4b4bf);font:12px/1.45 var(--deska-font-ui,\u0027Segoe UI\u0027,sans-serif);cursor:pointer;transition:background-color 120ms ease-out,color 120ms ease-out}.ds-secondary:hover{background:color-mix(in srgb,var(--fg,#e4e4ea) 9%,transparent);color:var(--fg,#e4e4ea)}.ds-secondary:focus-visible{outline:2px solid var(--active,#aaa2ff);outline-offset:3px}.ds-secondary:disabled{opacity:.4;cursor:default}@media(prefers-reduced-motion:reduce){.ds-secondary{transition:none}}"
+                       },
+                       {
+                           "name":  "Code field",
+                           "kind":  "input",
+                           "refersTo":  "text-field",
+                           "description":  "Labeled monospace textarea for Mermaid source.",
+                           "html":  "\u003clabel class=\"ds-field-label\"\u003eCódigo Mermaid\u003ctextarea class=\"ds-code\" rows=\"4\" spellcheck=\"false\"\u003e\u003c/textarea\u003e\u003c/label\u003e",
+                           "css":  ".ds-field-label{display:block;color:var(--fg,#e4e4ea);font:11px/1.45 var(--deska-font-ui,\u0027Segoe UI\u0027,sans-serif)}.ds-code{display:block;width:100%;min-height:100px;margin-top:7px;padding:10px;resize:vertical;border:1px solid var(--line,#393940);border-radius:6px;background:var(--deska-bg,#17171b);color:var(--fg,#e4e4ea);font:12px/1.6 var(--deska-font-mono,monospace);caret-color:var(--active,#aaa2ff)}.ds-code:focus-visible{outline:2px solid var(--active,#aaa2ff);outline-offset:3px}"
+                       },
+                       {
+                           "name":  "Floating menu",
+                           "kind":  "nav",
+                           "description":  "Secondary editor actions in a compact floating surface.",
+                           "html":  "\u003cnav class=\"ds-menu\" aria-label=\"Menú de la pizarra\"\u003e\u003cdiv class=\"ds-menu-title\"\u003ePizarra\u003c/div\u003e\u003cbutton class=\"ds-menu-action\" type=\"button\"\u003eCódigo Mermaid\u003c/button\u003e\u003cbutton class=\"ds-menu-action\" type=\"button\"\u003eImportar / exportar JSON\u003c/button\u003e\u003cbutton class=\"ds-menu-action\" type=\"button\"\u003ePreferencias del lienzo\u003c/button\u003e\u003c/nav\u003e",
+                           "css":  ".ds-menu{width:244px;max-width:100%;padding:8px;border-radius:9px;background:var(--ui,#232329);color:var(--fg,#e4e4ea);box-shadow:0 4px 16px rgb(0 0 0 / .16);font:12px/1.45 var(--deska-font-ui,\u0027Segoe UI\u0027,sans-serif)}.ds-menu-title{padding:7px 10px 10px;font-size:14px;font-weight:600}.ds-menu-action{display:flex;align-items:center;width:100%;min-height:38px;padding:5px 9px;border:0;border-radius:6px;background:transparent;color:var(--muted,#b4b4bf);font:inherit;cursor:pointer;transition:background-color 120ms ease-out,color 120ms ease-out}.ds-menu-action:hover{background:color-mix(in srgb,var(--fg,#e4e4ea) 9%,transparent);color:var(--fg,#e4e4ea)}.ds-menu-action:focus-visible{outline:2px solid var(--active,#aaa2ff);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-menu-action{transition:none}}"
+                       }
+                   ],
+    "narrative":  {
+                      "overview":  "Pizarra is a Spanish drawing tool inside Deska. Its approved direction is a compact, Excalidraw-like editor: the canvas fills the panel, the drawing tools float above it, and settings appear when relevant. The document is the visual focus.",
+                      "dos":  [
+                                  "Do preserve the full canvas, floating toolbar, and contextual left settings.",
+                                  "Do use Deska tokens for interface chrome and keep board preferences separate.",
+                                  "Do keep Spanish labels, visible keyboard focus, and programmatic control state.",
+                                  "Do preserve existing drawing content and storage behavior during visual changes."
+                              ],
+                      "donts":  [
+                                    "Don\u0027t add website navigation, hero sections, dashboard cards, or promotional content to this panel.",
+                                    "Don\u0027t substitute a permanent sidebar for the contextual floating surfaces.",
+                                    "Don\u0027t treat screenshots or synthetic test drawings as default user content.",
+                                    "Don\u0027t invent new brand colors, fonts, decorative motion, or a product identity for this scoped editor."
+                                ],
+                      "keyCharacteristics":  [
+                                                 "Selection, rectangle, diamond, ellipse, arrow, line, and text remain visible in the primary toolbar row. A trailing chevron reveals a secondary row for pen, eraser, fill, and sticky note.",
+                                                 "The extra row closes on tool selection, Escape, or an outside click. Text stays directly available in the primary row.",
+                                                 "Hand uses a compact tool button (32px) beside undo/redo, separated by a thin divider. Hand mode lasts for one drag, then restores the previously selected tool.",
+                                                 "First-use welcome guidance is centered directly on empty paper with no card background.",
+                                                 "It disappears after the first tool choice or start action and never overlays a document containing items. There is no persistent per-tool subtitle beneath the toolbar."
+                                             ]
+                  }
+}

@@ -25,7 +25,7 @@ Play chess against a bot you tune from 400 to 2000. You pick white, black or a r
 
 - **A game that survives a reload, with its history.** The start position and every move (as UCI text) are stored with the chosen side and where you are in the game, so a panel moved to a dock comes back where it was and Undo still works. Moves are replayed through the rules on load; a save that no longer replays is dropped with a message instead of crashing the panel.
 - **Settings read per key.** `loadSettings()` keeps each stored value only if it is valid and falls back to the default for the rest, so an older save never breaks a newer panel. A failed save is shown in the status line.
-- **Heavy work with no workers.** Deska's policy is `worker-src 'none'` and allows no WebAssembly, so Stockfish cannot run here. `engine.js` is a small alpha-beta search that runs on the page and yields to it between root moves. Weaker levels search less deep and blur each move's score with noise, so they sometimes pick a worse move. The levels are approximate, not measured Elo.
+- **Heavy work with no workers.** Deska's policy is `worker-src 'none'` and allows no WebAssembly, so Stockfish cannot run here. `engine.js` is a small alpha-beta search (transposition table, killer and history ordering) that runs on the page. It keeps its own stack instead of recursing, so it works in slices of a few milliseconds and the page paints between them; requests wait in a queue, one runs at a time, and a request the page no longer wants is dropped at the next slice. Nothing is allocated per node, so garbage collection does not pause the board. Weaker levels search less deep and blur each move's score with noise, so they sometimes pick a worse move. The levels are approximate, not measured Elo.
 - **A canvas that follows the theme.** The page paints with Deska's tokens (`--deska-bg`, `--deska-accent`, `--deska-danger`) and repaints on `deska.on('theme')`. The App palette is the accent on the dark squares and a pale tint of it on the light ones.
 - **Animation only while seen.** One `requestAnimationFrame` loop runs while the panel is visible and something blinks (a held piece); it sleeps otherwise, and `prefers-reduced-motion` turns the blink into a steady outline.
 - **Motion that says something.** Pieces slide to their square, the held piece lifts with a shadow, the bot shows a breathing icon and three bouncing dots while it thinks, and the bot waits 0.65 to 1.25 s before it answers. Panels rise in; everything stops under `prefers-reduced-motion`.
@@ -43,7 +43,7 @@ Play chess against a bot you tune from 400 to 2000. You pick white, black or a r
 | File | Role |
 | --- | --- |
 | `rules.js` | Legal moves, castling, en passant, FEN, end of game. Pure functions. |
-| `engine.js` | The bot: a flat-board alpha-beta search and the rating profiles. |
+| `engine.js` | The bot: a flat-board alpha-beta search in time slices, its request queue, and the rating profiles. |
 | `board.js` | Canvas drawing at device-pixel precision, piece styles, outline colors, arrows. |
 | `marks.js` | Board palettes and the analysis marks (arrows, highlights, brushes). Pure functions. |
 | `app.js` | Storage, game flow, pointer gestures (drag, arrows, premoves), menus, notices. |
@@ -63,5 +63,5 @@ Then in Deska: Panel Library, Build a panel, Load a folder, and pick `panels/che
 
 ## Notes
 
-- `rules.js` and `engine.js` agree with the standard perft counts (197,281 nodes from the start at depth 4, 97,862 for the Kiwipete position at depth 3), checked outside the repo.
+- `rules.js` and `engine.js` agree with the standard perft counts (197,281 nodes from the start at depth 4, 97,862 for the Kiwipete position at depth 3). `tools/chess/engine.test.mjs` checks the engine's counts, its position keys, a few tactics, cancellation and how long it holds the thread.
 - The scope is `workspace`: one game per workspace.

@@ -1116,6 +1116,86 @@ p {
   visibility: hidden;
 }
 
+/* Avatars --------------------------------------------------------------------------------------- */
+
+/* A person is a circle with their initial: 20px on the player lines, 22px in the home header, 30px in
+   the lists and 36px on Dex's card. A mark on it says "connected" (filled) or "in a game" (a ring);
+   the row says it in words as well. Dex is an initial like everyone else. */
+.avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 20%, var(--deska-surface-raised));
+  color: var(--deska-text);
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 1;
+}
+
+.avatar-player {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+}
+
+.avatar[data-status]::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  box-sizing: border-box;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--ground);
+  border-radius: 50%;
+}
+
+.avatar[data-status='available']::after {
+  background: var(--accent-ink, var(--deska-accent));
+}
+
+.avatar[data-status='playing']::after {
+  background: var(--ground);
+  box-shadow: inset 0 0 0 2px var(--accent-ink, var(--deska-accent));
+}
+
+.avatar[data-status='offline']::after {
+  display: none;
+}
+
+/* Dex's sheet opens on its card: the avatar, the name and the level. */
+.dex-card {
+  margin-bottom: 6px;
+}
+
+.dex-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dex-card .avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.dex-text {
+  display: grid;
+  min-width: 0;
+}
+
+.dex-level {
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Home: the first thing you see each time the panel opens ----------------------------------------- */
 
 /* The ground carries a soft wash of the person's accent from the top corner; everything else is
@@ -1126,47 +1206,55 @@ p {
   z-index: 5;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 0 14px 22px;
+  padding: 0 14px 14px;
   overflow: auto;
   overscroll-behavior: contain;
   background:
-    radial-gradient(130% 55% at 0% 0%, color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 9%, transparent), transparent 62%),
+    radial-gradient(120% 45% at 0% 0%, color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 12%, transparent), transparent 62%),
     var(--ground);
 }
 
-/* The title bar and the latest message stay in view while the lists scroll. */
+/* The app's mark, its name and what it offers; who you are and the way back to the board on the right. */
 .home-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 46px;
-  margin-inline: -14px;
-  padding-inline: 14px;
-  background: color-mix(in srgb, var(--ground) 90%, transparent);
-  backdrop-filter: blur(8px);
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 0;
+}
+
+.home-logo {
+  flex: none;
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  background-image: url('screenshots/1-chess-logo.jpg');
+  background-size: 181px 181px;
+  background-position: -61px -44px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--deska-accent) 18%, transparent);
+}
+
+.home-title {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  padding-top: 4px;
 }
 
 .home h1 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 19px;
-  font-weight: 680;
+  font-size: 22px;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 .home h1:focus {
   outline: none;
 }
 
-.home h1 .icon {
-  width: 22px;
-  height: 22px;
-  color: var(--accent-ink, var(--deska-accent));
+.home-tagline {
+  color: var(--deska-text-secondary);
+  font-size: 12px;
 }
 
 .home-head-end {
@@ -1175,55 +1263,42 @@ p {
   gap: 6px;
 }
 
+.home-head-end .icon-button {
+  width: 28px;
+  min-height: 28px;
+}
+
 .home-who {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  max-width: 150px;
-  color: var(--deska-text-secondary);
-  font-size: 12px;
-  font-weight: 560;
 }
 
-.home-who #home-who-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home h2 {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-  color: var(--deska-text-secondary);
-  font-size: 12px;
-  font-weight: 650;
+.home-who .avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
 }
 
 .home h3 {
-  margin: 14px 0 2px;
+  margin: 4px 0 0;
   color: var(--deska-text-secondary);
   font-size: 12px;
   font-weight: 650;
-}
-
-.home > section {
-  display: grid;
-  gap: 10px;
-  align-content: start;
 }
 
 .home .badge {
   margin-left: 6px;
 }
 
+/* The latest message stays in view while the sections scroll. */
 .home-note {
   position: sticky;
-  top: 46px;
+  top: 0;
   z-index: 1;
-  margin: -22px -14px -8px;
+  margin: 0 -14px;
   padding: 6px 14px 8px;
   background: color-mix(in srgb, var(--ground) 90%, transparent);
+  backdrop-filter: blur(8px);
   color: var(--deska-text);
   font-size: 12px;
   line-height: 1.5;
@@ -1231,6 +1306,79 @@ p {
 
 .home-note:empty {
   display: none;
+}
+
+/* Sections that fold ------------------------------------------------------------------------------ */
+
+.home > .fold {
+  border-top: 1px solid var(--line);
+}
+
+.fold-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--deska-text);
+  text-align: left;
+  user-select: none;
+}
+
+.fold-head > .icon:first-child {
+  color: var(--deska-text);
+}
+
+.fold-title {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.fold-summary {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The summary stands in for the content, so it only shows while the section is closed. */
+.fold[data-open='true'] > .fold-head .fold-summary,
+.fold:not([data-open]) > .fold-head .fold-summary,
+.fold-summary:empty {
+  display: none;
+}
+
+.fold-head .caret {
+  color: var(--deska-text-secondary);
+}
+
+.fold-head[aria-expanded='true'] .caret {
+  rotate: 180deg;
+}
+
+.home > .fold > .fold-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 0 14px;
+}
+
+#home-people > .fold-body {
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+#home-online:not([hidden]) {
+  display: grid;
+  gap: 10px;
 }
 
 /* Rows --------------------------------------------------------------------------------------- */
@@ -1266,6 +1414,10 @@ p {
 }
 
 .home-row-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
   overflow: hidden;
   font-weight: 620;
   letter-spacing: -0.005em;
@@ -1285,55 +1437,16 @@ p {
   align-items: center;
 }
 
-/* A person: a circle with their initial, and a mark on it for "connected" (filled) or "in a game"
-   (a ring). The row says it in words as well. */
-.avatar {
-  position: relative;
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--accent-ink, var(--deska-accent)) 20%, var(--deska-surface-raised));
-  color: var(--deska-text);
-  font-size: 12px;
-  font-weight: 680;
+.home-row-actions .primary,
+.home-row-actions .quiet {
+  min-height: 30px;
 }
 
-.home-who .avatar {
-  width: 22px;
-  height: 22px;
-  font-size: 11px;
-}
-
-.avatar[data-status]::after {
-  content: '';
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  box-sizing: border-box;
-  width: 11px;
-  height: 11px;
-  border: 2px solid var(--ground);
-  border-radius: 50%;
-}
-
-.avatar[data-status='available']::after {
-  background: var(--accent-ink, var(--deska-accent));
-}
-
-.avatar[data-status='playing']::after {
-  background: var(--ground);
-  box-shadow: inset 0 0 0 2px var(--accent-ink, var(--deska-accent));
-}
-
-.avatar[data-status='offline']::after {
-  display: none;
+.home-row-actions .quiet {
+  padding: 0 8px;
 }
 
 /* The one raised thing: the game you can continue. */
-.home-list.home-continue-list,
 #home-continue-list {
   gap: 8px;
 }
@@ -1418,24 +1531,79 @@ p {
   cursor: not-allowed;
 }
 
-/* New game ------------------------------------------------------------------------------------ */
+/* New game: two cards, each opens the color choice -------------------------------------------- */
 
-.home-new-buttons {
-  display: flex;
+.home-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
 }
 
-#home-bot {
-  flex: 1;
-  min-height: 44px;
-  font-size: 14px;
-  font-weight: 620;
+.home-card {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--deska-radius);
+  background: transparent;
+  color: var(--deska-text);
+  text-align: left;
+  transition: border-color 120ms ease-out, background-color 120ms ease-out, scale 120ms ease-out;
 }
 
-#home-two {
-  flex: none;
-  min-height: 44px;
-  border: 1px solid var(--line);
+.home-card:hover {
+  border-color: var(--accent-ink, var(--deska-accent));
+}
+
+.home-card:active {
+  scale: 0.98;
+}
+
+.home-card.is-primary {
+  border-color: var(--deska-accent);
+  background: var(--deska-accent);
+  color: var(--deska-on-accent);
+}
+
+.home-card.is-primary:hover {
+  background: color-mix(in srgb, var(--deska-accent) 88%, var(--deska-text));
+}
+
+.home-card.is-primary .avatar {
+  background: var(--deska-on-accent);
+  color: var(--deska-accent);
+}
+
+.home-card-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--deska-surface-raised);
+  color: var(--deska-text);
+}
+
+.home-card-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.home-card-title {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.home-card-sub {
+  color: var(--deska-text-secondary);
+  font-size: 12px;
+}
+
+.home-card.is-primary .home-card-sub {
+  color: inherit;
+  opacity: 0.8;
 }
 
 #home-signin {
@@ -1448,15 +1616,24 @@ p {
 .home-level {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 4px 8px;
+  gap: 6px 8px;
   align-items: center;
   color: var(--deska-text-secondary);
   font-size: 12px;
 }
 
+.home-level .with-icon {
+  gap: 6px;
+}
+
+.home-level .with-icon .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--deska-text);
+}
+
 .home-level .range {
   grid-column: 1 / -1;
-  grid-row: 2;
 }
 
 .home-level output {
@@ -1466,6 +1643,56 @@ p {
 }
 
 /* People -------------------------------------------------------------------------------------- */
+
+/* Challenges are a box of their own inside Online, with how many are waiting on its heading. */
+.home-box {
+  border: 1px solid var(--line);
+  border-radius: var(--deska-radius);
+  background: color-mix(in srgb, var(--deska-accent) 5%, transparent);
+}
+
+.home-box > .fold-head {
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.home-box > .fold-head .icon:first-child {
+  width: 15px;
+  height: 15px;
+}
+
+.home-box .fold-title {
+  margin: 0;
+  color: var(--deska-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.count-badge {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--deska-accent);
+  color: var(--deska-on-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.count-badge:empty {
+  display: none;
+}
+
+.home-box .home-list > li {
+  border-top: 1px solid var(--line);
+}
+
+.home-box .home-row {
+  padding: 6px 10px 8px;
+}
 
 .home-unshared {
   display: flex;
@@ -1489,9 +1716,9 @@ p {
 .home-search-icon {
   position: absolute;
   top: 50%;
-  left: 12px;
+  left: 11px;
   translate: 0 -50%;
-  color: var(--deska-text-tertiary);
+  color: var(--deska-text);
   pointer-events: none;
 }
 
@@ -1516,10 +1743,59 @@ p {
 }
 
 .home-empty {
-  padding: 10px 0 2px;
+  padding: 4px 0 2px;
   color: var(--deska-text-secondary);
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* A quiet way into the private room by code, at the end of the list. */
+.home-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--deska-radius);
+  background: transparent;
+  color: var(--deska-text);
+  text-align: left;
+  transition: background-color 120ms ease-out;
+}
+
+.home-link span {
+  flex: 1;
+}
+
+.home-link:hover {
+  background: color-mix(in srgb, var(--deska-text) 6%, transparent);
+}
+
+.home-link:disabled {
+  color: var(--deska-text-secondary);
+  cursor: not-allowed;
+}
+
+.caret-side {
+  rotate: -90deg;
+  color: var(--deska-text-secondary);
+}
+
+/* The color choice, over the whole home screen, wherever it is scrolled to. */
+.home-choose {
+  position: fixed;
+  z-index: 6;
+}
+
+.card-head {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.card-head .detail {
+  font-size: 12px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1535,7 +1811,6 @@ p {
 
   .home > section:nth-of-type(2) { animation-delay: 50ms; }
   .home > section:nth-of-type(3) { animation-delay: 100ms; }
-  .home > section:nth-of-type(4) { animation-delay: 150ms; }
   .home .home-list > li:nth-child(2) { animation-delay: 60ms; }
   .home .home-list > li:nth-child(3) { animation-delay: 110ms; }
 }

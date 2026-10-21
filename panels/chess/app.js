@@ -20,7 +20,7 @@ import {
   toggleArrow, toggleHighlight,
 } from './marks.js'
 import { mountOnline } from './online-ui.js'
-import { mountHome } from './home.js'
+import { initial, levelText, mountHome } from './home.js'
 import { onlineConfig } from './online-config.js'
 
 const $ = (id) => document.getElementById(id)
@@ -64,6 +64,7 @@ let pendingOnline = null // { uci, after } while the server confirms your online
 let home = null
 let stash = null // a local game set aside while a new one is being started from the home screen
 let onlineOpponent = null // the rival's alias, from the room
+let myName = null // your shared name or alias once signed in, for the initial on your line
 let onlineCode = null
 let onlineStatus = 'waiting'
 let selectionKind = 'move' // move | premove: what the held piece is choosing
@@ -226,8 +227,9 @@ function closeBars() {
 
 // Player lines --------------------------------------------------------------------------------
 //
-// The line above the board is the opponent's, the one below is yours. Each carries a name, a note
-// (the color, or the room code while waiting), what that side has captured and its material lead.
+// The line above the board is the opponent's, the one below is yours. Each carries an avatar (an
+// initial), a name, a note (the color, or the room code while waiting), what that side has captured
+// and its material lead. Two people on one board are only colors, so their lines have no avatar.
 // The turn line under the side to move is drawn by CSS from data-active.
 
 // The lines line up with the board's edge, which the board measures.
@@ -242,16 +244,19 @@ function playerLines() {
   const waiting = onlineMode && onlineStatus === 'waiting'
   let topName
   let topNote = colorWord(top)
+  let topAvatar = null
   let bottomName = 'Tú'
   if (onlineMode) {
     topName = waiting ? 'Esperando rival' : onlineOpponent || 'Rival'
+    if (!waiting) topAvatar = initial(topName)
     if (waiting) topNote = onlineCode
     else if (onlineLocked && online?.state.phase === 'disconnected') topNote = 'Sin conexión'
-  } else if (settings.botEnabled) topName = `Dex ${settings.botRating}`
+  } else if (settings.botEnabled) { topName = `Dex ${settings.botRating}`; topAvatar = 'D' }
   else { topName = colorWord(top); topNote = ''; bottomName = colorWord(side) }
+  const you = bottomName === 'Tú'
   const lines = {
-    top: { name: topName, note: topNote, code: waiting },
-    bottom: { name: bottomName, note: bottomName === 'Tú' ? colorWord(side) : '' },
+    top: { name: topName, note: topNote, code: waiting, avatar: topAvatar },
+    bottom: { name: bottomName, note: you ? colorWord(side) : '', avatar: you ? initial(myName || bottomName) : null },
   }
   // What the side to move is doing says more than its color: thinking, or in check.
   const shown = shownGame()
@@ -274,6 +279,9 @@ function updatePlayers() {
     const mine = position === 'bottom' ? side : other(side) // the color of this line
     const foe = other(mine)
     const line = lines[position]
+    const avatar = $(`avatar-${position}`)
+    avatar.textContent = line.avatar || ''
+    avatar.hidden = !line.avatar
     $(`name-${position}`).textContent = line.name
     const note = $(`note-${position}`)
     note.textContent = line.note || ''
@@ -1042,7 +1050,7 @@ function buildControls() {
     })
   }
   $('promotion-cancel').addEventListener('click', () => { clearSelection(); redraw(); $('board').focus() })
-  for (const button of document.querySelectorAll('.choice')) {
+  for (const button of document.querySelectorAll('#choose .choice')) {
     button.addEventListener('click', () => startGame(button.dataset.side))
   }
   $('again').addEventListener('click', () => startGame(side))
@@ -1075,6 +1083,7 @@ function buildControls() {
   $('bot-rating').addEventListener('input', () => {
     settings = { ...settings, botRating: Number($('bot-rating').value) }
     $('bot-output').value = String(settings.botRating)
+    $('bot-level').textContent = levelText(settings.botRating)
     $('bot-label').textContent = `Dex ${settings.botRating}`
   })
   $('bot-rating').addEventListener('change', () => change({ botRating: Number($('bot-rating').value) }))
@@ -1166,6 +1175,7 @@ function syncSettingsUi() {
   $('bot-rating').value = String(settings.botRating)
   $('bot-rating').disabled = !settings.botEnabled
   $('bot-output').value = String(settings.botRating)
+  $('bot-level').textContent = settings.botEnabled ? levelText(settings.botRating) : 'Apagado'
   $('bot-label').textContent = settings.botEnabled ? `Dex ${settings.botRating}` : 'Dex apagado'
 }
 
@@ -1266,7 +1276,12 @@ function localSnapshot() {
   const g = src.games[src.cursor]
   const turn = isOver(g) ? 'Terminada' : settings.botEnabled ? (g.turn === src.side ? 'Tu turno' : 'Turno de Dex')
     : `Turno de las ${g.turn === 'w' ? 'blancas' : 'negras'}`
-  return { game: g, side: src.side, title: settings.botEnabled ? `Contra Dex ${settings.botRating}` : 'Dos personas', sub: `Jugada ${g.full} · ${turn}` }
+  return {
+    game: g, side: src.side, bot: settings.botEnabled,
+    title: settings.botEnabled ? `Contra Dex ${settings.botRating}` : 'Dos personas',
+    short: settings.botEnabled ? 'Contra Dex' : 'Dos personas',
+    sub: `Jugada ${g.full} · ${turn}`, moveNo: g.full,
+  }
 }
 
 // Leaving the online room for a local game signs out on this screen; sign back in quietly, no sheet.
@@ -1308,8 +1323,11 @@ home = mountHome({
   actions: {
     hasGame: () => phase !== 'choose',
     continueLocal,
-    startBot: () => newLocalGame(true),
-    startTwo: () => newLocalGame(false),
+    // The home screen asks for the color itself, so the game starts straight away.
+    startBot: (choice) => { newLocalGame(true); startGame(choice) },
+    startTwo: (choice) => { newLocalGame(false); startGame(choice) },
+    renderChoices: renderPreviews,
+    setMe: (name) => { if (name !== myName) { myName = name; updatePlayers() } },
     setLevel: (n) => change({ botRating: n }),
     openCode: () => showSheet('online-sheet'),
   },

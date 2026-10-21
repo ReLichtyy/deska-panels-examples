@@ -2,3 +2,16 @@ node_modules/
 dist/
 .DS_Store
 test-results/
+# CocoIndex Code (ccc)
+/.cocoindex_code/
+
+# Chess / Pizarra: only the panels themselves are tracked
+/chess-server/
+/tools/chess/
+/tools/pizarra-selection.test.mjs
+/tools/test-pizarra.mjs
+/docs/chess-design/
+/docs/screenshots/preview/chess-*.png
+/docs/screenshots/preview/pizarra-*.png
+/releases/
+/progress.md

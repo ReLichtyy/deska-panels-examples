@@ -7,14 +7,18 @@
 // Sharing the page's thread: the search keeps its own stack instead of recursing, so it can stop
 // after a few milliseconds and pick up exactly where it was. Requests wait in a queue and run one
 // at a time, in short slices, with the page free to paint between them; a request the page no
-// longer wants is dropped at the next slice instead of searching on.
+// longer wants is dropped at the next slice instead of searching on. Inside a search nothing is
+// allocated per node (moves, undo records and scores live in typed arrays made once), so the
+// garbage collector has nothing to stop the page for.
 
 const P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6
 const VALUE = [0, 100, 320, 330, 500, 900, 0]
-const KNIGHT_D = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]]
-const KING_D = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
-const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]]
-const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+// Directions as flat (file, rank) pairs.
+const KNIGHT_D = Int8Array.of(1, 2, 2, 1, 2, -1, 1, -2, -1, -2, -2, -1, -2, 1, -1, 2)
+const KING_D = Int8Array.of(1, 0, 1, 1, 0, 1, -1, 1, -1, 0, -1, -1, 0, -1, 1, -1)
+const DIAG = Int8Array.of(1, 1, 1, -1, -1, 1, -1, -1)
+const ORTHO = Int8Array.of(1, 0, -1, 0, 0, 1, 0, -1)
+const ALL_D = Int8Array.of(...DIAG, ...ORTHO)
 const INF = 1e6
 const MATE = 100000
 const MATE_BOUND = MATE - 1000 // scores beyond this are mates, counted in plies from the root
@@ -23,6 +27,7 @@ const PAUSED = Symbol('paused')
 const PUSHED = null // a node that could not be scored at once and is now on the stack
 
 const MAX_PLY = 64
+const MAX_MOVES = 256 // more than any position's pseudo-legal moves
 const CHECK_EXTENSION_PLY = 10 // checks extend the search only this close to the root
 const QUIESCE_PLY = 32 // captures are followed no deeper than this
 
@@ -32,7 +37,6 @@ const BUSY_SLICE_MS = 4
 
 // Move = from | to << 6 | flags << 12, always below 2^17
 const F_DOUBLE = 1, F_EP = 2, F_CASTLE_K = 4, F_CASTLE_Q = 8, F_PROMO = 16
-const MOVE_SPAN = 131072
 // Castling rights bits: white king side, white queen side, black king side, black queen side.
 const CASTLE_MASK = new Int8Array(64).fill(15)
 CASTLE_MASK[4] = 15 & ~3; CASTLE_MASK[0] = 15 & ~2; CASTLE_MASK[7] = 15 & ~1
@@ -53,11 +57,13 @@ const ZH = new Int32Array(Z_SIDE + 1)
   for (let i = 0; i < ZL.length; i++) { ZL[i] = next(); ZH[i] = next() }
 }
 
+const UNDO_SIZE = 512
+
 class Position {
   constructor(fen) {
     const parts = fen.trim().split(/\s+/)
     this.b = new Int8Array(64)
-    this.kings = [0, 0] // index 0 white, 1 black
+    this.kings = new Int8Array(2) // index 0 white, 1 black
     parts[0].split('/').forEach((row, i) => {
       let f = 0
       for (const ch of row) {
@@ -73,7 +79,14 @@ class Position {
     const rights = parts[2] || '-'
     this.castle = (rights.includes('K') ? 1 : 0) | (rights.includes('Q') ? 2 : 0) | (rights.includes('k') ? 4 : 0) | (rights.includes('q') ? 8 : 0)
     this.ep = !parts[3] || parts[3] === '-' ? -1 : (Number(parts[3][1]) - 1) * 8 + 'abcdefgh'.indexOf(parts[3][0])
-    this.undo = []
+    // The undo stack, one column per field.
+    this.plies = 0
+    this.uMove = new Int32Array(UNDO_SIZE)
+    this.uCaptured = new Int8Array(UNDO_SIZE)
+    this.uCastle = new Int8Array(UNDO_SIZE)
+    this.uEp = new Int8Array(UNDO_SIZE)
+    this.uLo = new Int32Array(UNDO_SIZE)
+    this.uHi = new Int32Array(UNDO_SIZE)
     const [lo, hi] = this.computeHash()
     this.lo = lo
     this.hi = hi
@@ -99,6 +112,24 @@ class Position {
 
   kingSquare(side) { return this.kings[side === 1 ? 0 : 1] }
 
+  /** Does a slider of value `a` or `q` see (f, r) along `dirs`? */
+  ray(f, r, dirs, a, q) {
+    const b = this.b
+    for (let i = 0; i < dirs.length; i += 2) {
+      const df = dirs[i], dr = dirs[i + 1]
+      let x = f + df, y = r + dr
+      while (x >= 0 && x < 8 && y >= 0 && y < 8) {
+        const v = b[y * 8 + x]
+        if (v !== 0) {
+          if (v === a || v === q) return true
+          break
+        }
+        x += df; y += dr
+      }
+    }
+    return false
+  }
+
   /** Is `sq` attacked by `by` (1 white, -1 black)? */
   attacked(sq, by) {
     const b = this.b
@@ -109,35 +140,22 @@ class Position {
       if (f > 0 && b[pr * 8 + f - 1] === by * P) return true
       if (f < 7 && b[pr * 8 + f + 1] === by * P) return true
     }
-    for (const [df, dr] of KNIGHT_D) {
-      const x = f + df, y = r + dr
+    for (let i = 0; i < 16; i += 2) {
+      const x = f + KNIGHT_D[i], y = r + KNIGHT_D[i + 1]
       if (x >= 0 && x < 8 && y >= 0 && y < 8 && b[y * 8 + x] === by * N) return true
     }
-    for (const [df, dr] of KING_D) {
-      const x = f + df, y = r + dr
+    for (let i = 0; i < 16; i += 2) {
+      const x = f + KING_D[i], y = r + KING_D[i + 1]
       if (x >= 0 && x < 8 && y >= 0 && y < 8 && b[y * 8 + x] === by * K) return true
     }
-    for (const [dirs, slider] of [[DIAG, B], [ORTHO, R]]) {
-      for (const [df, dr] of dirs) {
-        let x = f + df, y = r + dr
-        while (x >= 0 && x < 8 && y >= 0 && y < 8) {
-          const v = b[y * 8 + x]
-          if (v !== 0) {
-            if (v === by * slider || v === by * Q) return true
-            break
-          }
-          x += df; y += dr
-        }
-      }
-    }
-    return false
+    return this.ray(f, r, DIAG, by * B, by * Q) || this.ray(f, r, ORTHO, by * R, by * Q)
   }
 
   inCheck(side) { return this.attacked(this.kingSquare(side), -side) }
 
-  /** Pseudo-legal moves; with `captures` only captures and promotions. */
-  gen(captures = false) {
-    const out = []
+  /** Writes the pseudo-legal moves into `out` and returns how many; with `captures` only captures and promotions. */
+  gen(out, captures = false) {
+    let n = 0
     const b = this.b
     const side = this.side
     for (let sq = 0; sq < 64; sq++) {
@@ -151,25 +169,26 @@ class Position {
         const t = sq + 8 * side
         const promo = r === lastBefore ? F_PROMO : 0
         if (b[t] === 0) {
-          if (!captures || promo) out.push(sq | (t << 6) | (promo << 12))
-          if (!captures && r === start && b[t + 8 * side] === 0) out.push(sq | ((t + 8 * side) << 6) | (F_DOUBLE << 12))
+          if (!captures || promo) out[n++] = sq | (t << 6) | (promo << 12)
+          if (!captures && r === start && b[t + 8 * side] === 0) out[n++] = sq | ((t + 8 * side) << 6) | (F_DOUBLE << 12)
         }
-        for (const df of [-1, 1]) {
+        for (let df = -1; df <= 1; df += 2) {
           const nf = f + df
           if (nf < 0 || nf > 7) continue
           const c = t + df
-          if (b[c] * side < 0) out.push(sq | (c << 6) | (promo << 12))
-          else if (c === this.ep) out.push(sq | (c << 6) | (F_EP << 12))
+          if (b[c] * side < 0) out[n++] = sq | (c << 6) | (promo << 12)
+          else if (c === this.ep) out[n++] = sq | (c << 6) | (F_EP << 12)
         }
       } else if (piece === N || piece === K) {
-        for (const [df, dr] of piece === N ? KNIGHT_D : KING_D) {
-          const x = f + df, y = r + dr
+        const dirs = piece === N ? KNIGHT_D : KING_D
+        for (let i = 0; i < 16; i += 2) {
+          const x = f + dirs[i], y = r + dirs[i + 1]
           if (x < 0 || x > 7 || y < 0 || y > 7) continue
           const t = y * 8 + x
           const v = b[t] * side
           if (v > 0) continue
           if (captures && v === 0) continue
-          out.push(sq | (t << 6))
+          out[n++] = sq | (t << 6)
         }
         if (piece === K && !captures) {
           const base = side === 1 ? 0 : 56
@@ -177,27 +196,28 @@ class Position {
             const kingSide = side === 1 ? 1 : 4
             const queenSide = side === 1 ? 2 : 8
             if ((this.castle & kingSide) && b[base + 5] === 0 && b[base + 6] === 0 && b[base + 7] === side * R
-              && !this.attacked(base + 5, -side) && !this.attacked(base + 6, -side)) out.push(sq | ((base + 6) << 6) | (F_CASTLE_K << 12))
+              && !this.attacked(base + 5, -side) && !this.attacked(base + 6, -side)) out[n++] = sq | ((base + 6) << 6) | (F_CASTLE_K << 12)
             if ((this.castle & queenSide) && b[base + 1] === 0 && b[base + 2] === 0 && b[base + 3] === 0 && b[base] === side * R
-              && !this.attacked(base + 3, -side) && !this.attacked(base + 2, -side)) out.push(sq | ((base + 2) << 6) | (F_CASTLE_Q << 12))
+              && !this.attacked(base + 3, -side) && !this.attacked(base + 2, -side)) out[n++] = sq | ((base + 2) << 6) | (F_CASTLE_Q << 12)
           }
         }
       } else {
-        const dirs = piece === B ? DIAG : piece === R ? ORTHO : DIAG.concat(ORTHO)
-        for (const [df, dr] of dirs) {
+        const dirs = piece === B ? DIAG : piece === R ? ORTHO : ALL_D
+        for (let i = 0; i < dirs.length; i += 2) {
+          const df = dirs[i], dr = dirs[i + 1]
           let x = f + df, y = r + dr
           while (x >= 0 && x < 8 && y >= 0 && y < 8) {
             const t = y * 8 + x
             const v = b[t] * side
             if (v > 0) break
-            if (v < 0) { out.push(sq | (t << 6)); break }
-            if (!captures) out.push(sq | (t << 6))
+            if (v < 0) { out[n++] = sq | (t << 6); break }
+            if (!captures) out[n++] = sq | (t << 6)
             x += df; y += dr
           }
         }
       }
     }
-    return out
+    return n
   }
 
   make(m) {
@@ -208,12 +228,18 @@ class Position {
     const flags = m >> 12
     const piece = b[from]
     const captured = b[to]
-    this.undo.push({ m, captured, castle: this.castle, ep: this.ep, lo: this.lo, hi: this.hi })
+    const u = this.plies++
+    this.uMove[u] = m
+    this.uCaptured[u] = captured
+    this.uCastle[u] = this.castle
+    this.uEp[u] = this.ep
+    this.uLo[u] = this.lo
+    this.uHi[u] = this.hi
     this.flip(piece, from)
     b[from] = 0
     if (flags & F_EP) {
       const at = to - 8 * side
-      this.undo[this.undo.length - 1].captured = b[at]
+      this.uCaptured[u] = b[at]
       this.flip(b[at], at)
       b[at] = 0
     } else if (captured) this.flip(captured, to)
@@ -233,29 +259,33 @@ class Position {
   }
 
   unmake() {
-    const u = this.undo.pop()
+    const u = --this.plies
+    const m = this.uMove[u]
     const b = this.b
     this.side = -this.side
     const side = this.side
-    const from = u.m & 63
-    const to = (u.m >> 6) & 63
-    const flags = u.m >> 12
+    const from = m & 63
+    const to = (m >> 6) & 63
+    const flags = m >> 12
     const moved = flags & F_PROMO ? side * P : b[to]
     b[from] = moved
-    if (flags & F_EP) { b[to] = 0; b[to - 8 * side] = u.captured } else b[to] = u.captured
+    if (flags & F_EP) { b[to] = 0; b[to - 8 * side] = this.uCaptured[u] } else b[to] = this.uCaptured[u]
     if (flags & F_CASTLE_K) { b[to + 1] = b[to - 1]; b[to - 1] = 0 }
     if (flags & F_CASTLE_Q) { b[to - 2] = b[to + 1]; b[to + 1] = 0 }
     if (moved === side * K) this.kings[side === 1 ? 0 : 1] = from
-    this.castle = u.castle
-    this.ep = u.ep
-    this.lo = u.lo
-    this.hi = u.hi
+    this.castle = this.uCastle[u]
+    this.ep = this.uEp[u]
+    this.lo = this.uLo[u]
+    this.hi = this.uHi[u]
   }
 
-  /** Legal moves only (each one is made and unmade to test king safety). */
+  /** Legal moves only, as a plain array (each one is made and unmade to test king safety). */
   legalMoves() {
+    const buffer = new Int32Array(MAX_MOVES)
+    const count = this.gen(buffer)
     const out = []
-    for (const m of this.gen()) {
+    for (let i = 0; i < count; i++) {
+      const m = buffer[i]
       const mover = this.side
       this.make(m)
       if (!this.inCheck(mover)) out.push(m)
@@ -332,35 +362,28 @@ function ttStore(pos, depth, flag, score, move, ply) {
 const SEARCH = 0, QUIESCE = 1
 
 /**
- * Orders moves in place, best first: the table's move, captures (most valuable victim, least
- * valuable attacker), promotions, the two killers of this ply, then quiet moves by history.
+ * How promising a move looks before searching it: the table's move, captures (most valuable
+ * victim, least valuable attacker), promotions, the two killers of this ply, then quiet moves by history.
  */
-function order(pos, moves, ttBest, killers, history, ply) {
-  const b = pos.b
-  const keys = new Array(moves.length)
-  for (let i = 0; i < moves.length; i++) {
-    const m = moves[i]
-    const from = m & 63
-    const to = (m >> 6) & 63
-    const flags = m >> 12
-    const victim = Math.abs(b[to])
-    let s
-    if (m === ttBest) s = 2000000
-    else if (victim || flags & F_EP) s = 1000000 + 10 * VALUE[victim || P] - VALUE[Math.abs(b[from])]
-    else if (flags & F_PROMO) s = 900000
-    else if (killers && m === killers[ply * 2]) s = 800000
-    else if (killers && m === killers[ply * 2 + 1]) s = 799999
-    else s = history ? Math.min(history[from * 64 + to], 700000) : 0
-    keys[i] = s * MOVE_SPAN + m
+function moveScore(b, m, ttBest, killers, history, ply) {
+  if (m === ttBest) return 2000000
+  const from = m & 63
+  const to = (m >> 6) & 63
+  const flags = m >> 12
+  const victim = b[to] < 0 ? -b[to] : b[to]
+  if (victim || flags & F_EP) return 1000000 + 10 * VALUE[victim || P] - VALUE[b[from] < 0 ? -b[from] : b[from]]
+  if (flags & F_PROMO) return 900000
+  if (killers) {
+    if (m === killers[ply * 2]) return 800000
+    if (m === killers[ply * 2 + 1]) return 799999
   }
-  keys.sort((x, y) => y - x)
-  for (let i = 0; i < moves.length; i++) moves[i] = keys[i] % MOVE_SPAN
-  return moves
+  return history ? Math.min(history[from * 64 + to], 700000) : 0
 }
 
 /**
  * One alpha-beta search from a node, on an explicit stack so `run` can stop when its slice is
  * over and continue on the next call. Scores are negamax: each node's from its side to move.
+ * Moves are picked best-first one at a time, so a cutoff skips sorting the rest.
  */
 class Search {
   constructor(pos, deadline) {
@@ -371,7 +394,8 @@ class Search {
     this.killers = new Int32Array(MAX_PLY * 2)
     this.history = new Int32Array(64 * 64)
     this.stack = Array.from({ length: MAX_PLY }, () => ({
-      kind: SEARCH, depth: 0, alpha: 0, beta: 0, alpha0: 0, ply: 0, moves: null, i: 0, best: 0, bestMove: 0, legal: 0, inCheck: false, current: 0,
+      kind: SEARCH, depth: 0, alpha: 0, beta: 0, alpha0: 0, ply: 0, i: 0, count: 0, best: 0, bestMove: 0, legal: 0, inCheck: false, current: 0,
+      moves: new Int32Array(MAX_MOVES), scores: new Int32Array(MAX_MOVES),
     }))
     this.top = -1
     this.value = undefined // a score waiting to be handed to the frame on top
@@ -381,6 +405,16 @@ class Search {
     this.top = -1
     const r = this.enter(depth, alpha, beta, ply)
     this.value = r === PUSHED ? undefined : r
+  }
+
+  /** Fills a frame's move list and scores. */
+  load(f, captures, ttBest) {
+    const b = this.pos.b
+    f.count = this.pos.gen(f.moves, captures)
+    const killers = captures ? null : this.killers
+    const history = captures ? null : this.history
+    for (let i = 0; i < f.count; i++) f.scores[i] = moveScore(b, f.moves[i], ttBest, killers, history, f.ply)
+    f.i = 0
   }
 
   /** A full-width node: a score at once (table hit), or PUSHED. */
@@ -408,12 +442,11 @@ class Search {
     f.alpha0 = alpha
     f.beta = beta
     f.ply = ply
-    f.moves = order(pos, pos.gen(), ttBest, this.killers, this.history, ply)
-    f.i = 0
     f.best = -INF
     f.bestMove = 0
     f.legal = 0
     f.inCheck = inCheck
+    this.load(f, false, ttBest)
     return PUSHED
   }
 
@@ -424,15 +457,13 @@ class Search {
     const stand = evaluate(pos)
     if (ply > QUIESCE_PLY || this.top >= MAX_PLY - 2 || stand >= beta) return stand
     if (stand > alpha) alpha = stand
-    const moves = pos.gen(true)
-    if (moves.length === 0) return alpha
     const f = this.stack[++this.top]
     f.kind = QUIESCE
     f.alpha = alpha
     f.beta = beta
     f.ply = ply
-    f.moves = order(pos, moves, 0, null, null, ply)
-    f.i = 0
+    this.load(f, true, 0)
+    if (f.count === 0) { this.top--; return alpha }
     return PUSHED
   }
 
@@ -476,8 +507,16 @@ class Search {
           continue
         }
       }
-      while (f.i < f.moves.length) {
-        const m = f.moves[f.i++]
+      const moves = f.moves
+      const scores = f.scores
+      while (f.i < f.count) {
+        // Bring the best remaining move to position i.
+        let pick = f.i
+        for (let j = f.i + 1; j < f.count; j++) if (scores[j] > scores[pick]) pick = j
+        const m = moves[pick]
+        moves[pick] = moves[f.i]; scores[pick] = scores[f.i]
+        moves[f.i] = m
+        f.i++
         const mover = pos.side
         pos.make(m)
         if (pos.inCheck(mover)) { pos.unmake(); continue }
@@ -547,7 +586,8 @@ class Think {
   begin() {
     // The clock starts when the request leaves the queue, not when it joined it.
     this.search = new Search(this.pos, performance.now() + this.timeMs)
-    this.ordered = order(this.pos, this.root.slice(), 0, null, null, 0)
+    const b = this.pos.b
+    this.ordered = this.root.slice().sort((x, y) => moveScore(b, y, 0, null, null, 0) - moveScore(b, x, 0, null, null, 0))
     this.depth = 1
     this.index = 0
     this.current = []
@@ -591,7 +631,7 @@ class Think {
       }
     } catch (error) {
       if (error !== TIMEOUT) throw error
-      while (pos.undo.length) pos.unmake()
+      while (pos.plies) pos.unmake()
       return this.pick()
     }
   }
@@ -661,7 +701,7 @@ export function perft(fen, depth, { checkHash = false } = {}) {
   const walk = (d) => {
     if (checkHash) {
       const [lo, hi] = pos.computeHash()
-      if (lo !== pos.lo || hi !== pos.hi) throw new Error(`hash mismatch after ${pos.undo.map((u) => toUci(u.m)).join(' ')}`)
+      if (lo !== pos.lo || hi !== pos.hi) throw new Error(`hash mismatch after ${Array.from(pos.uMove.subarray(0, pos.plies), toUci).join(' ')}`)
     }
     if (d === 0) return 1
     let total = 0

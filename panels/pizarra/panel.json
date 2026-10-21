@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "pizarra",
+  "name": "Pizarra",
+  "version": "1.1.0",
+  "description": "A compact whiteboard and diagram sketcher: pen, shapes, text, a Mermaid subset compiler and base diagrams, saved as JSON.",
+  "author": "Pasho",
+  "icon": "icon.svg",
+  "color": "#2f9e8f",
+  "category": "productivity",
+  "permissions": [
+    "clipboard-write"
+  ],
+  "network": [],
+  "sdk": 1,
+  "contributes": {
+    "panel": {
+      "entry": "index.html",
+      "scope": "workspace",
+      "size": {
+        "width": 560,
+        "height": 560
+      }
+    }
+  }
+}

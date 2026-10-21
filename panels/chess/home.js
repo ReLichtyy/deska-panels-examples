@@ -37,21 +37,24 @@ function explain(error) {
 }
 
 const SVG = 'http://www.w3.org/2000/svg'
-function icon(name, className = 'icon') {
+function icon(name, className = 'icon', set = 'i') {
   const svg = document.createElementNS(SVG, 'svg')
   svg.setAttribute('class', className)
   svg.setAttribute('aria-hidden', 'true')
   const use = document.createElementNS(SVG, 'use')
-  use.setAttribute('href', `#i-${name}`)
+  use.setAttribute('href', `#${set}-${name}`)
   svg.append(use)
   return svg
 }
 
 // The bot's level as a number and a word: what 1200 means is not obvious to everyone.
-function levelText(rating) {
+export function levelText(rating) {
   const word = rating < 700 ? 'Principiante' : rating < 1100 ? 'Casual' : rating < 1500 ? 'De club' : rating < 1800 ? 'Fuerte' : 'Experto'
   return `${rating} · ${word}`
 }
+
+// The first letter of a name, for the avatars here and on the player lines.
+export const initial = (name) => [...name][0].toLocaleUpperCase('es')
 
 const make = (tag, props = {}, ...children) => {
   const el = document.createElement(tag)
@@ -108,7 +111,6 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   // Lists ------------------------------------------------------------------------------------------
 
   // A person is a circle with their initial; a small mark on it says whether they are connected.
-  const initial = (name) => [...name][0].toLocaleUpperCase('es')
   function avatar(person) {
     return make('span', { class: 'avatar', 'data-status': person.status, 'aria-hidden': 'true', text: initial(person.name) })
   }
@@ -144,13 +146,17 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   function renderContinue() {
     const list = $('home-continue-list')
     const rows = []
+    const summaries = []
     const snapshot = local()
     if (snapshot) {
       const canvas = make('canvas', { class: 'home-mini', 'aria-hidden': 'true' })
       drawMini(canvas, snapshot.game, snapshot.side === 'b', look().palette)
+      summaries.push(`${snapshot.short} · Jugada ${snapshot.moveNo}`)
       const button = make('button', { class: 'home-row home-continue', type: 'button' }, canvas,
         make('span', { class: 'home-row-text' },
-          make('span', { class: 'home-row-title', text: snapshot.title }),
+          make('span', { class: 'home-row-title' },
+            snapshot.bot && make('span', { class: 'avatar avatar-player avatar-dex', 'aria-hidden': 'true', text: 'D' }),
+            snapshot.title),
           make('span', { class: 'home-row-sub', text: snapshot.sub })),
         make('span', { class: 'home-go', text: 'Continuar', 'aria-hidden': 'true' }))
       button.addEventListener('click', () => { actions.continueLocal(); close(true) })
@@ -161,10 +167,13 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
       const waiting = room.status === 'waiting'
       const title = waiting ? `Sala ${room.code}` : `Contra ${room.opponent || 'rival'}`
       const sub = waiting ? 'Esperando rival' : `Online · Jugada ${Math.floor(room.moves / 2) + 1} · ${room.turn === room.side ? 'Tu turno' : 'Turno del rival'}`
+      summaries.push(waiting ? title : `${title} · Jugada ${Math.floor(room.moves / 2) + 1}`)
       const button = make('button', { class: 'home-row home-continue', type: 'button' },
-        make('span', { class: 'home-mini home-mini-online', 'aria-hidden': 'true' }, icon('user-circle')),
+        make('span', { class: 'home-mini home-mini-online', 'aria-hidden': 'true' }, icon('online', 'icon', 'a')),
         make('span', { class: 'home-row-text' },
-          make('span', { class: 'home-row-title', text: title }),
+          make('span', { class: 'home-row-title' },
+            !waiting && make('span', { class: 'avatar avatar-player', 'aria-hidden': 'true', text: initial(room.opponent || 'Rival') }),
+            title),
           make('span', { class: 'home-row-sub', text: sub })),
         make('span', { class: 'home-go', text: waiting ? 'Abrir' : 'Continuar', 'aria-hidden': 'true' }))
       button.addEventListener('click', () => enter(() => online.resume(room.id)))
@@ -172,6 +181,7 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
     }
     list.replaceChildren(...rows)
     $('home-continue').hidden = rows.length === 0
+    $('home-continue-summary').textContent = summaries.join(' · ')
   }
 
   function renderChallenges() {
@@ -190,7 +200,21 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
       return personRow(c.to, [action('Quitar', () => answer('cancel', c), { aria: `Quitar el aviso de ${c.to.name}` })], 'Rechazó tu reto')
     })
     $('home-challenges-list').replaceChildren(...incoming, ...sent)
-    $('home-challenges').hidden = incoming.length + sent.length === 0
+    const total = incoming.length + sent.length
+    $('home-challenges').hidden = total === 0
+    $('home-challenges-count').textContent = total ? String(total) : ''
+    $('home-challenges-count').setAttribute('aria-label', `${total} ${total === 1 ? 'reto' : 'retos'}`)
+  }
+
+  // What a closed Online section would hide: challenges waiting for you and who is connected.
+  function peopleSummary() {
+    if (!state.signedIn || !state.data) return ''
+    const challenges = state.data.incoming.length
+    const connected = state.data.recent.filter((p) => p.status === 'available').length
+    const parts = []
+    if (challenges) parts.push(`${challenges} ${challenges === 1 ? 'reto' : 'retos'}`)
+    if (connected) parts.push(`${connected} ${connected === 1 ? 'conectado' : 'conectados'}`)
+    return parts.join(' · ')
   }
 
   function renderPeople() {
@@ -220,21 +244,70 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
 
   function render() {
     $('home-close').hidden = !actions.hasGame()
+    showLevel(settings().botRating)
     $('home-level').value = String(settings().botRating)
-    $('home-level-output').value = levelText(settings().botRating)
     const me = state.signedIn ? state.data?.me : null
     $('home-who').hidden = !me
     if (me) {
       const name = me.name || me.alias
       $('home-who-name').textContent = name
+      $('home-who').title = name
       $('home-who-avatar').textContent = initial(name)
     }
+    actions.setMe(me ? me.name || me.alias : null)
     renderChallenges()
     renderContinue()
     renderPeople()
+    $('home-people-summary').textContent = peopleSummary()
     const busy = state.busy !== null
     for (const id of ['home-close', 'home-code', 'home-share']) $(id).disabled = busy
     $('home-signin').disabled = busy || !configured
+  }
+
+  function showLevel(rating) {
+    $('home-level-output').value = levelText(rating)
+    $('home-bot-level').textContent = `Nivel ${rating}`
+  }
+
+  // Sections fold to their heading; closed, the heading says in a few words what is inside.
+  // Whether each one is open is remembered while the panel stays open.
+  function setFold(section, open) {
+    const head = section.querySelector(':scope > .fold-head')
+    head.setAttribute('aria-expanded', String(open))
+    section.querySelector(':scope > .fold-body').hidden = !open
+    section.dataset.open = String(open)
+  }
+
+  // Choosing a color ---------------------------------------------------------------------------------
+  //
+  // A new game asks for a side right here, over the home screen, and starts on the board straight away.
+
+  let choosing = null // 'bot' | 'two' while the color card is open
+  let chooseFrom = null
+
+  function openChoose(kind, from) {
+    choosing = kind
+    chooseFrom = from
+    $('home-choose-sub').textContent = kind === 'bot' ? `Contra Dex · ${settings().botRating}` : 'Dos en un tablero'
+    $('home-choose').hidden = false
+    actions.renderChoices()
+    $('home-choose').querySelector('.choice').focus({ preventScroll: true })
+  }
+
+  function closeChoose() {
+    if (!choosing) return
+    choosing = null
+    $('home-choose').hidden = true
+    chooseFrom?.focus({ preventScroll: true })
+  }
+
+  function choose(side) {
+    const kind = choosing
+    choosing = null
+    $('home-choose').hidden = true
+    if (kind === 'bot') actions.startBot(side)
+    else actions.startTwo(side)
+    close(true)
   }
 
   // Data -------------------------------------------------------------------------------------------
@@ -333,6 +406,8 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   function close(force = false) {
     if (!state.open || (!force && !actions.hasGame())) return
     state.open = false
+    choosing = null
+    $('home-choose').hidden = true
     epoch++
     clearTimeout(timer)
     clearTimeout(searchTimer)
@@ -353,9 +428,15 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   // Wiring -------------------------------------------------------------------------------------------
 
   $('home-close').addEventListener('click', close)
-  $('home-bot').addEventListener('click', () => { actions.startBot(); close(true) })
-  $('home-two').addEventListener('click', () => { actions.startTwo(); close(true) })
-  $('home-level').addEventListener('input', () => { $('home-level-output').value = levelText(Number($('home-level').value)) })
+  $('home-bot').addEventListener('click', () => openChoose('bot', $('home-bot')))
+  $('home-two').addEventListener('click', () => openChoose('two', $('home-two')))
+  for (const button of root.querySelectorAll('#home-choose .choice')) button.addEventListener('click', () => choose(button.dataset.side))
+  $('home-choose-cancel').addEventListener('click', closeChoose)
+  $('home-choose').addEventListener('click', (event) => { if (event.target === $('home-choose')) closeChoose() })
+  for (const section of root.querySelectorAll('.fold')) {
+    section.querySelector(':scope > .fold-head').addEventListener('click', () => setFold(section, section.dataset.open === 'false'))
+  }
+  $('home-level').addEventListener('input', () => showLevel(Number($('home-level').value)))
   $('home-level').addEventListener('change', () => actions.setLevel(Number($('home-level').value)))
   $('home-signin').addEventListener('click', () => run(() => online.signIn()))
   $('home-share').addEventListener('click', () => run(() => online.signIn()))
@@ -363,7 +444,8 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   $('home-search-form').addEventListener('submit', (event) => { event.preventDefault(); search() })
   $('home-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(search, SEARCH_DELAY_MS) })
   root.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && state.open && actions.hasGame()) { event.stopPropagation(); close() }
+    if (event.key !== 'Escape' || !state.open) return
+    if (choosing) { event.stopPropagation(); closeChoose() } else if (actions.hasGame()) { event.stopPropagation(); close() }
   })
   sdk.on('visibility', (v) => {
     visible = v.visible
