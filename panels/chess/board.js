@@ -7,13 +7,23 @@ import { normalizeColor, tint } from './marks.js'
 export const PIECE_SETS = Object.freeze({ prism: 'Prisma', trace: 'Trazo', orbit: 'Órbita', classic: 'Clásico' })
 
 // Silhouettes on a 48-unit grid, rasterized at device resolution.
-const shapes = {
-  k: new Path2D('M21 3H27V9H33V15H27V21H21V15H15V9H21ZM18 22H30L34 37H14ZM10 40H38V44H10Z'),
-  q: new Path2D('M8 12L16 20L18 7L24 18L30 7L32 20L40 12L35 29H13ZM16 29H32L36 37H12ZM9 40H39V44H9Z'),
-  r: new Path2D('M10 6H16V12H21V6H27V12H32V6H38V19L33 23V34L37 37H11L15 34V23L10 19ZM9 40H39V44H9Z'),
-  b: new Path2D('M24 5C34 13 38 18 32 24L31 28H17L16 24C10 18 14 13 24 5ZM18 28H30L34 37H14ZM10 40H38V44H10Z'),
-  n: new Path2D('M14 37L17 25L10 28L8 22L20 8L22 3L29 7C38 10 39 25 34 37ZM10 40H38V44H10Z'),
-  p: new Path2D('M31 13A7 7 0 1 1 17 13A7 7 0 1 1 31 13ZM20 22H28C27 29 30 34 34 37H14C18 34 21 29 20 22ZM11 40H37V44H11Z'),
+// Clásico: a two-tier base, a collar under every body, and inner lines (bricks, mane, band) for volume.
+const BASE = 'M11.5 37h25l1.5 4H10ZM9.5 41h29v3.6c0 .8-.6 1.4-1.4 1.4H10.9c-.8 0-1.4-.6-1.4-1.4Z'
+const classic = {
+  k: new Path2D('M22 2.5h4v4h4v4h-4v4h-4v-4h-4v-4h4ZM12 19.5c0-3 5.4-5.2 12-5.2s12 2.2 12 5.2c0 2.6-2.4 4.1-4.9 4.9L32 31H16l.9-6.6c-2.5-.8-4.9-2.3-4.9-4.9ZM14.5 31h19l-1 3h-17ZM15.5 34h17c.6 1.2 1.4 2.2 2.6 3H12.9c1.2-.8 2-1.8 2.6-3Z' + BASE),
+  q: new Path2D('M12.2 12a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0ZM19.2 8.4a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0ZM26.2 6.6a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0ZM33.2 8.4a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0ZM40.2 12a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0ZM10 14.5l5 12.5 2-15 4.6 13.2L24 9.2l2.4 16L31 12l2 15 5-12.5L35.5 31h-23ZM13.5 31h21l-1 3h-19ZM14.5 34h19c.5 1.1 1.2 2.1 2.2 3H12.3c1-.9 1.7-1.9 2.2-3Z' + BASE),
+  r: new Path2D('M11 5h6v4h4V5h6v4h4V5h6v9l-4 3.2H15L11 14ZM15 17.2h18L32 34H16ZM12.5 34h23l1.5 3h-26Z' + BASE),
+  b: new Path2D('M26.5 7a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0ZM24 9.6c7 4.4 10 9.4 8.5 13.9-.9 2.6-3.3 4.3-4.4 5.5h-8.2c-1.1-1.2-3.5-2.9-4.4-5.5C14 19 17 14 24 9.6ZM17 29h14l-1.5 3h-11ZM19.5 32h9c.4 2 1.9 3.8 4.2 5H15.3c2.3-1.2 3.8-3 4.2-5Z' + BASE),
+  n: new Path2D('M14.5 37c-.6-6.2 1.4-10.6 5.8-14l-6.6 2.6c-2.2.8-4.5-.3-5.3-2.4l-.6-1.8c-.4-1.1-.1-2.4.8-3.2L19.2 9l1-5 4.6 3.6c8.4.5 14.2 7.6 13.7 17.4-.3 4.8-1.6 8.4-3.5 12Z' + BASE),
+  p: new Path2D('M30 12.5a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM17.5 19.8h13l-1.8 3.2h-9.4ZM20 23h8c.2 6 2.8 10.2 7.2 14H12.8c4.4-3.8 7-8 7.2-14Z' + BASE),
+}
+const classicDetail = {
+  k: new Path2D('M17 24.4c4.6 1.1 9.4 1.1 14 0M24 16.5v6'),
+  q: new Path2D('M14 28h20M17.5 31.8h13'),
+  r: new Path2D('M16.2 23h15.6M16.4 28.6h15.2M24 17.2V23M20 23v5.6M28 23v5.6M24 28.6V34'),
+  b: new Path2D('M27 14.2l-5.4 6.6M18.5 26h11'),
+  n: new Path2D('M27.6 8.6c5.6 3 8.4 9.2 7.2 17.6M21 22.6c-1.6 1.4-3.2 2-5 2.2M17.5 34h16'),
+  p: new Path2D('M18 30.5c4 .9 8 .9 12 0'),
 }
 // Trazo ("Neo caótico"), Prisma and Órbita ("Futurista") are drawn on a 64-unit grid; paintPiece scales
 // them into the same 48-unit box as the other styles.
@@ -169,16 +179,36 @@ export function paintPiece(c, set, type, white, look = {}) {
     if (type === 'k') fillPolygon(c, [[29, 11], [35, 11], [35, 17], [29, 17]], accent)
     c.restore()
   } else {
-    c.fill(shapes[type])
-    c.stroke(shapes[type])
-    c.lineWidth = 1.4
-    if (type === 'b') {
-      c.beginPath(); c.moveTo(23, 12); c.lineTo(29, 18); c.stroke()
-    }
+    // Clásico: lit from the left, a soft cast shadow, and inner lines that give each piece its volume.
+    const path = classic[type]
+    c.save()
+    c.translate(1.6, 1.2)
+    c.fillStyle = 'rgba(0, 0, 0, 0.22)'
+    c.fill(path)
+    c.restore()
+    const g = c.createLinearGradient(10, 0, 38, 0)
+    g.addColorStop(0, white ? '#ffffff' : '#46514c')
+    g.addColorStop(0.45, white ? '#fbf8ef' : '#262e2b')
+    g.addColorStop(1, white ? '#d9d2c1' : '#121716')
+    c.fillStyle = g
+    c.fill(path)
+    c.lineWidth = 1.5
+    c.stroke(path)
+    c.lineWidth = 1.1
+    c.globalAlpha = 0.85
+    c.stroke(classicDetail[type])
+    c.globalAlpha = 1
+    // A thin highlight down the lit side.
+    c.save()
+    c.clip(path)
+    c.strokeStyle = white ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.22)'
+    c.lineWidth = 1.6
+    c.beginPath(); c.moveTo(type === 'n' ? 19 : 18.5, 14); c.lineTo(17, 36); c.stroke()
+    c.restore()
     if (type === 'n') {
-      c.fillStyle = c.strokeStyle
-      c.beginPath(); c.arc(23, 14, 1.4, 0, Math.PI * 2); c.fill()
-      c.beginPath(); c.moveTo(28, 12); c.quadraticCurveTo(35, 21, 29, 33); c.stroke()
+      c.fillStyle = line
+      c.beginPath(); c.arc(21.5, 13.5, 1.6, 0, Math.PI * 2); c.fill()
+      c.beginPath(); c.arc(11.2, 20.2, 0.9, 0, Math.PI * 2); c.fill()
     }
   }
 }

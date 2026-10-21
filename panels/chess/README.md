@@ -5,7 +5,7 @@ El servicio HTTPS está pendiente: consulta [ONLINE.md](ONLINE.md) para el estad
 y el contrato del servidor. El botón Online mantiene el acceso deshabilitado hasta configurarlo.
 La promoción permite elegir dama, torre, alfil o caballo. Online está marcado como **Beta**.
 
-Al abrir siempre sale el **menú de inicio**: continuar la partida anterior (la local y la online), empezar una contra el bot o en un mismo tablero, y, con el servidor conectado, tus rivales con quién está conectado, una búsqueda por nombre y los retos. El botón de la casa de la barra lo reabre.
+Al abrir siempre sale el **menú de inicio**: continuar la partida anterior (la local y la online), empezar una contra el bot o en un mismo tablero (el color se elige ahí mismo), y, con el servidor conectado, los retos, una búsqueda por nombre y los usuarios con quién está conectado. Cada sección se pliega y, plegada, resume lo que contiene. Los jugadores llevan un avatar con su inicial (Dex, «D»). El botón de la torre de la barra lo reabre.
 
 En Apariencia: colores del tablero, estilo de piezas, coordenadas y **Tablero a pantalla completa**: el tablero ocupa todo el panel y las barras se superponen y se ocultan solas (el botón de arriba a la derecha las trae de vuelta). En un panel ancho, la barra lateral es estrecha y queda junto al tablero.
 
@@ -35,7 +35,7 @@ Play chess against a bot you tune from 400 to 2000. You pick white, black or a r
 
 - The board fills the panel under the header and its coordinates sit inside the edge squares. Hover outlines the square in the color opposite to it, so it reads on any palette. Press a piece and the outline blinks, the square gets a tint, dots mark where it can go and a red outline marks what it can capture.
 - Legal moves only: no move leaves your king in check. Castling, en passant, checkmate, stalemate, the fifty-move rule and bare kings are handled. Promotion lets you choose a queen, rook, bishop or knight.
-- Bottom bar: the lightbulb asks the engine, at full strength whatever the bot's level, for the best move and draws an arrow on the board. When the game ends a result card (Victoria, Derrota or Tablas) lands after the last move with Jugar de nuevo, Cambiar de color and Ver tablero. Undo and Redo walk the game (against the bot they jump to your own turns, so going back never lands where the bot would instantly move), and a move made from an earlier position replaces what came after it. "Partida" opens a drawer that collapses to nothing and starts a new game with white, black or a random side.
+- Bottom bar: the lightbulb asks the engine, at full strength whatever the bot's level, for the best move and draws an arrow on the board. When the game ends a result card (Victoria, Derrota or Tablas) lands after the last move with Jugar de nuevo, Cambiar de color and Ver tablero. Undo and Redo walk the game (against the bot they jump to your own turns, so going back never lands where the bot would instantly move), and a move made from an earlier position replaces what came after it. "Partida" opens the new-game card: against Dex (with its level) or two people on one board, then white, black or a random side. The home screen's cards open the same card straight at the color.
 - Appearance menu: board colors, four piece styles (Prisma, Trazo, Órbita and Clásico, the default), coordinates, and Reiniciar, which goes back to the choice of side. Bot menu: switch the bot off to play both sides, or set its level.
 
 ## Files
@@ -44,10 +44,11 @@ Play chess against a bot you tune from 400 to 2000. You pick white, black or a r
 | --- | --- |
 | `rules.js` | Legal moves, castling, en passant, FEN, end of game. Pure functions. |
 | `engine.js` | The bot: a flat-board alpha-beta search in time slices, its request queue, and the rating profiles. |
-| `board.js` | Canvas drawing at device-pixel precision, piece styles, outline colors, arrows. |
+| `board.js` | Canvas drawing at device-pixel precision, piece styles (Clásico with a two-tier base, collar, inner lines and side light), outline colors, arrows. |
+| `new-game.js` | The new-game card: opponent and Dex's level, then the color. |
 | `marks.js` | Board palettes and the analysis marks (arrows, highlights, brushes). Pure functions. |
 | `app.js` | Storage, game flow, pointer gestures (drag, arrows, premoves), menus, notices. |
-| `index.html` | Includes an inline sprite of [Phosphor Icons](https://phosphoricons.com) (MIT), regular weight. |
+| `index.html` | Includes an inline sprite of the panel's own chess icons (thin stroke, one accent square each) and a few [Phosphor Icons](https://phosphoricons.com) (MIT), regular weight, for the turn and result. |
 
 ## Permissions and hosts
 

@@ -122,17 +122,6 @@
 
       </div>
 
-      <div id="drawer" class="drawer" inert>
-        <div class="drawer-inner">
-          <p class="drawer-title">Nueva partida</p>
-          <div class="new-game" role="group" aria-label="Elegir color para una nueva partida">
-            <button class="new-choice" type="button" data-new="w"><span class="dot dot-w" aria-hidden="true"></span>Blancas</button>
-            <button class="new-choice" type="button" data-new="random"><svg class="icon" aria-hidden="true"><use href="#i-shuffle" /></svg>Aleatorio</button>
-            <button class="new-choice" type="button" data-new="b"><span class="dot dot-b" aria-hidden="true"></span>Negras</button>
-          </div>
-        </div>
-      </div>
-
       <footer id="player-bottom" class="foot player" data-position="bottom">
         <div class="who">
           <span id="avatar-bottom" class="avatar avatar-player" aria-hidden="true"></span>
@@ -147,7 +136,7 @@
           <button id="redo" class="icon-button" type="button" aria-label="Rehacer jugada" title="Rehacer jugada"><svg class="icon" aria-hidden="true"><use href="#a-redo" /></svg></button>
         </div>
         <p id="move-count" class="count visually-hidden">Jugada 1</p>
-        <button id="drawer-toggle" class="chip" type="button" aria-expanded="false" aria-controls="drawer"><svg class="icon" aria-hidden="true"><use href="#a-new" /></svg><span>Partida</span><svg class="icon caret" aria-hidden="true"><use href="#a-caret" /></svg></button>
+        <button id="drawer-toggle" class="chip" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="new-game"><svg class="icon" aria-hidden="true"><use href="#a-new" /></svg><span>Partida</span><svg class="icon caret" aria-hidden="true"><use href="#a-caret" /></svg></button>
       </footer>
 
       <section id="bot-sheet" class="sheet" aria-labelledby="bot-title" hidden>
@@ -172,7 +161,14 @@
           <button class="icon-button" type="button" data-close aria-label="Cerrar online"><svg class="icon" aria-hidden="true"><use href="#a-x" /></svg></button>
         </div>
         <p id="online-message" class="hint" role="status" aria-live="polite"></p>
-        <button id="online-signin" class="primary" type="button">Entrar con Deska</button>
+        <div id="online-connect" class="connect home-row" data-state="connecting" hidden>
+          <span class="avatar connect-icon" aria-hidden="true"><svg class="icon"><use href="#a-online" /></svg></span>
+          <span class="home-row-text">
+            <span class="home-row-title connect-title" role="status"></span>
+            <span class="home-row-sub connect-sub"></span>
+          </span>
+          <button class="pill connect-retry" type="button" hidden>Reintentar</button>
+        </div>
         <div id="online-rooms" class="online-actions" hidden>
           <button id="online-create" class="primary" type="button">Crear sala privada</button>
           <form id="online-join-form" class="online-join">
@@ -288,7 +284,14 @@
           </button>
           <div id="home-people-body" class="fold-body">
             <p id="home-people-intro" class="hint"></p>
-            <button id="home-signin" class="primary" type="button">Entrar con Deska</button>
+            <div id="home-connect" class="connect home-row" data-state="connecting" hidden>
+              <span class="avatar connect-icon" aria-hidden="true"><svg class="icon"><use href="#a-online" /></svg></span>
+              <span class="home-row-text">
+                <span class="home-row-title connect-title" role="status"></span>
+                <span class="home-row-sub connect-sub"></span>
+              </span>
+              <button class="pill connect-retry" type="button" hidden>Reintentar</button>
+            </div>
             <div id="home-online" hidden>
               <section id="home-challenges" class="fold home-box" aria-labelledby="home-challenges-title" hidden>
                 <button class="fold-head" type="button" aria-expanded="true" aria-controls="home-challenges-body">
@@ -319,20 +322,37 @@
             </div>
           </div>
         </section>
+      </section>
 
-        <div id="home-choose" class="overlay home-choose" hidden>
-          <div class="card" role="dialog" aria-modal="true" aria-labelledby="home-choose-title">
-            <div class="card-head">
-              <h1 id="home-choose-title"><svg class="icon" aria-hidden="true"><use href="#i-crown-simple" /></svg>Elige tu color</h1>
-              <span id="home-choose-sub" class="detail"></span>
-            </div>
-            <div class="choices">
-              <button class="choice" type="button" data-side="w"><canvas width="96" height="48" aria-hidden="true"></canvas>Blancas</button>
-              <button class="choice" type="button" data-side="random"><canvas width="96" height="48" aria-hidden="true"></canvas>Aleatorio</button>
-              <button class="choice" type="button" data-side="b"><canvas width="96" height="48" aria-hidden="true"></canvas>Negras</button>
-            </div>
-            <button id="home-choose-cancel" class="quiet" type="button">Cancelar</button>
+      <section id="new-game" class="overlay new-game" hidden>
+        <div class="card" role="dialog" aria-modal="true" aria-labelledby="new-game-title">
+          <div class="card-head">
+            <h1 id="new-game-title"><svg class="icon" aria-hidden="true"><use href="#i-crown-simple" /></svg><span id="new-game-title-text">Nueva partida</span></h1>
+            <span id="new-game-sub" class="detail"></span>
           </div>
+          <div id="new-game-modes" class="new-game-modes">
+            <div class="home-cards">
+              <button id="new-game-bot" class="home-card is-primary" type="button">
+                <span class="avatar avatar-dex" aria-hidden="true">D</span>
+                <span class="home-card-text"><span class="home-card-title">Contra Dex</span><span id="new-game-bot-level" class="home-card-sub"></span></span>
+              </button>
+              <button id="new-game-two" class="home-card" type="button">
+                <span class="home-card-icon" aria-hidden="true"><svg class="icon"><use href="#a-two" /></svg></span>
+                <span class="home-card-text"><span class="home-card-title">Dos en un tablero</span><span class="home-card-sub">Mismo dispositivo</span></span>
+              </button>
+            </div>
+            <div class="home-level">
+              <label for="new-game-level" class="with-icon"><svg class="icon" aria-hidden="true"><use href="#a-dex" /></svg>Nivel de Dex</label>
+              <output id="new-game-level-output" for="new-game-level"></output>
+              <input id="new-game-level" class="range" type="range" min="400" max="2000" step="50" value="1200" />
+            </div>
+          </div>
+          <div id="new-game-colors" class="choices" hidden>
+            <button class="choice" type="button" data-pick="w"><canvas width="96" height="48" aria-hidden="true"></canvas>Blancas</button>
+            <button class="choice" type="button" data-pick="random"><canvas width="96" height="48" aria-hidden="true"></canvas>Aleatorio</button>
+            <button class="choice" type="button" data-pick="b"><canvas width="96" height="48" aria-hidden="true"></canvas>Negras</button>
+          </div>
+          <button id="new-game-cancel" class="quiet" type="button">Cancelar</button>
         </div>
       </section>
 

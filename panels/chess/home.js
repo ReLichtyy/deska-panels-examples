@@ -74,7 +74,7 @@ const make = (tag, props = {}, ...children) => {
  * configured: whether an online service is configured.
  * local:     () => { game, side, title, sub } | null, the local game that can be continued.
  * look:      () => { palette: { dark, light } } for the little boards.
- * actions:   { continueLocal, startBot, startTwo, openCode, hasGame, afterEnter }.
+ * actions:   { continueLocal, chooseNew(kind, opener), setLevel, setMe, openCode, hasGame }.
  */
 export function mountHome({ sdk, app, online, configured, local, look, actions, settings }) {
   const $ = (id) => document.getElementById(id)
@@ -100,7 +100,7 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   let covered = []
   function setInert(on) {
     if (on) {
-      covered = [...app.children].filter((el) => el !== root && !el.inert)
+      covered = [...app.children].filter((el) => el !== root && el.id !== 'new-game' && !el.inert)
       for (const el of covered) el.inert = true
     } else {
       for (const el of covered) el.inert = false
@@ -208,7 +208,11 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
 
   // What a closed Online section would hide: challenges waiting for you and who is connected.
   function peopleSummary() {
-    if (!state.signedIn || !state.data) return ''
+    if (!state.signedIn) {
+      const connection = online.connection?.state
+      return connection === 'connecting' ? 'Conectando…' : ['waiting', 'offline', 'blocked'].includes(connection) ? 'Sin conexión' : ''
+    }
+    if (!state.data) return ''
     const challenges = state.data.incoming.length
     const connected = state.data.recent.filter((p) => p.status === 'available').length
     const parts = []
@@ -220,13 +224,12 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   function renderPeople() {
     const configuredNow = configured
     const signedIn = state.signedIn
-    $('home-people-intro').hidden = signedIn
-    $('home-signin').hidden = signedIn
+    // Signed out, the connection block (the online module's) says what is happening; the intro is
+    // only for a panel with no service at all.
+    $('home-people-intro').hidden = signedIn || configuredNow
     $('home-online').hidden = !signedIn
     if (!signedIn) {
-      $('home-people-intro').textContent = configuredNow
-        ? 'Juega con otras personas de Deska. Deska te pregunta si quieres compartir tu nombre; solo lo verán quienes usen Chess.'
-        : 'Podrás jugar con otras personas cuando se conecte el servidor de partidas.'
+      $('home-people-intro').textContent = 'Podrás jugar con otras personas cuando se conecte el servidor de partidas.'
       return
     }
     const me = state.data?.me
@@ -261,7 +264,6 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
     $('home-people-summary').textContent = peopleSummary()
     const busy = state.busy !== null
     for (const id of ['home-close', 'home-code', 'home-share']) $(id).disabled = busy
-    $('home-signin').disabled = busy || !configured
   }
 
   function showLevel(rating) {
@@ -276,38 +278,6 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
     head.setAttribute('aria-expanded', String(open))
     section.querySelector(':scope > .fold-body').hidden = !open
     section.dataset.open = String(open)
-  }
-
-  // Choosing a color ---------------------------------------------------------------------------------
-  //
-  // A new game asks for a side right here, over the home screen, and starts on the board straight away.
-
-  let choosing = null // 'bot' | 'two' while the color card is open
-  let chooseFrom = null
-
-  function openChoose(kind, from) {
-    choosing = kind
-    chooseFrom = from
-    $('home-choose-sub').textContent = kind === 'bot' ? `Contra Dex · ${settings().botRating}` : 'Dos en un tablero'
-    $('home-choose').hidden = false
-    actions.renderChoices()
-    $('home-choose').querySelector('.choice').focus({ preventScroll: true })
-  }
-
-  function closeChoose() {
-    if (!choosing) return
-    choosing = null
-    $('home-choose').hidden = true
-    chooseFrom?.focus({ preventScroll: true })
-  }
-
-  function choose(side) {
-    const kind = choosing
-    choosing = null
-    $('home-choose').hidden = true
-    if (kind === 'bot') actions.startBot(side)
-    else actions.startTwo(side)
-    close(true)
   }
 
   // Data -------------------------------------------------------------------------------------------
@@ -406,8 +376,6 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   function close(force = false) {
     if (!state.open || (!force && !actions.hasGame())) return
     state.open = false
-    choosing = null
-    $('home-choose').hidden = true
     epoch++
     clearTimeout(timer)
     clearTimeout(searchTimer)
@@ -417,9 +385,14 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   }
 
   // The online session changed (signed in, out or revoked): show the right part of the screen.
+  // Only a new phase can change this screen (busy and errors are the online sheet's), so other
+  // updates of the session do not rebuild it.
+  let syncedPhase = null
   function sync(clientState) {
     const signedIn = ['ready', 'waiting', 'active', 'finished', 'disconnected'].includes(clientState.phase)
-    if (signedIn === state.signedIn) { if (state.open) render(); return }
+    const phaseChanged = clientState.phase !== syncedPhase
+    syncedPhase = clientState.phase
+    if (signedIn === state.signedIn) { if (state.open && phaseChanged) render(); return }
     state.signedIn = signedIn
     if (!signedIn) { state.data = null; state.results = null }
     if (state.open) { signedIn ? refresh() : render() }
@@ -428,24 +401,20 @@ export function mountHome({ sdk, app, online, configured, local, look, actions, 
   // Wiring -------------------------------------------------------------------------------------------
 
   $('home-close').addEventListener('click', close)
-  $('home-bot').addEventListener('click', () => openChoose('bot', $('home-bot')))
-  $('home-two').addEventListener('click', () => openChoose('two', $('home-two')))
-  for (const button of root.querySelectorAll('#home-choose .choice')) button.addEventListener('click', () => choose(button.dataset.side))
-  $('home-choose-cancel').addEventListener('click', closeChoose)
-  $('home-choose').addEventListener('click', (event) => { if (event.target === $('home-choose')) closeChoose() })
+  // A new game asks for the color on the new-game card, over the home screen; the game starts from there.
+  $('home-bot').addEventListener('click', () => actions.chooseNew('bot', $('home-bot')))
+  $('home-two').addEventListener('click', () => actions.chooseNew('two', $('home-two')))
   for (const section of root.querySelectorAll('.fold')) {
     section.querySelector(':scope > .fold-head').addEventListener('click', () => setFold(section, section.dataset.open === 'false'))
   }
   $('home-level').addEventListener('input', () => showLevel(Number($('home-level').value)))
   $('home-level').addEventListener('change', () => actions.setLevel(Number($('home-level').value)))
-  $('home-signin').addEventListener('click', () => run(() => online.signIn()))
   $('home-share').addEventListener('click', () => run(() => online.signIn()))
   $('home-code').addEventListener('click', () => { actions.openCode(); close(true) })
   $('home-search-form').addEventListener('submit', (event) => { event.preventDefault(); search() })
   $('home-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(search, SEARCH_DELAY_MS) })
   root.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !state.open) return
-    if (choosing) { event.stopPropagation(); closeChoose() } else if (actions.hasGame()) { event.stopPropagation(); close() }
+    if (event.key === 'Escape' && state.open && actions.hasGame()) { event.stopPropagation(); close() }
   })
   sdk.on('visibility', (v) => {
     visible = v.visible

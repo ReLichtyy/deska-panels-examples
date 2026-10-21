@@ -668,7 +668,7 @@ p {
   40% { translate: 0 -4px; background: var(--accent-ink, var(--deska-accent)); }
 }
 
-/* Bottom bar and the collapsible new-game drawer ------------------------------------- */
+/* Bottom bar ------------------------------------------------------------------------------- */
 
 .foot {
   display: flex;
@@ -697,90 +697,6 @@ p {
   transition: rotate 200ms ease-out;
 }
 
-#drawer-toggle[aria-expanded='true'] .caret {
-  rotate: 180deg;
-}
-
-/* Collapses to nothing, so a closed drawer costs the board no space. */
-.drawer {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 200ms ease-out;
-}
-
-.drawer:not([inert]) {
-  grid-template-rows: 1fr;
-}
-
-.drawer-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 0;
-  overflow: hidden;
-  padding: 0 14px;
-  border-top: 1px solid transparent;
-}
-
-.drawer:not([inert]) .drawer-inner {
-  padding: 8px 14px;
-  border-top-color: var(--deska-border);
-}
-
-.drawer-title {
-  font-size: 12px;
-  font-weight: 650;
-  color: var(--deska-text-secondary);
-}
-
-.new-game {
-  display: flex;
-  gap: 6px;
-}
-
-.new-choice {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--deska-border);
-  border-radius: var(--deska-radius-small);
-  background: var(--deska-surface-raised);
-  font-size: 12px;
-  transition: border-color 120ms ease-out, scale 120ms ease-out;
-}
-
-.new-choice:hover {
-  border-color: var(--accent-ink, var(--deska-accent));
-}
-
-.new-choice:active {
-  scale: 0.96;
-}
-
-.new-choice .icon {
-  width: 14px;
-  height: 14px;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.dot-w {
-  background: #fffdf5;
-  border: 1px solid var(--deska-text-secondary);
-}
-
-.dot-b {
-  background: #202725;
-  border: 1px solid var(--deska-text-secondary);
-}
-
 .icon-button:disabled {
   opacity: 0.35;
   cursor: default;
@@ -789,12 +705,6 @@ p {
 .icon-button:disabled:hover {
   background: transparent;
   color: var(--deska-text-secondary);
-}
-
-@media (max-width: 330px) {
-  .drawer-title {
-    display: none;
-  }
 }
 
 /* Result card and the hint button ------------------------------------------------------- */
@@ -1101,7 +1011,6 @@ p {
 
   #app:not([data-full='true']) .match { grid-column: 1; grid-row: 1 / -1; }
   #app:not([data-full='true']) .bar { grid-column: 2; grid-row: 2; border-bottom: 1px solid var(--line); }
-  #app:not([data-full='true']) .drawer { grid-column: 2; grid-row: 3; }
   #app:not([data-full='true']) .foot { grid-column: 2; grid-row: 4; flex-wrap: wrap; }
   #app:not([data-full='true']) .foot .who,
   #app:not([data-full='true']) .bar .who { flex-basis: 100%; }
@@ -1227,9 +1136,7 @@ p {
   width: 60px;
   height: 60px;
   border-radius: 14px;
-  background-image: url('screenshots/1-chess-logo.jpg');
-  background-size: 181px 181px;
-  background-position: -61px -44px;
+  background: url('logo.jpg') center / cover;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--deska-accent) 18%, transparent);
 }
 
@@ -1241,14 +1148,14 @@ p {
   padding-top: 4px;
 }
 
-.home h1 {
+.home-title h1 {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
 
-.home h1:focus {
+.home-title h1:focus {
   outline: none;
 }
 
@@ -1379,6 +1286,15 @@ p {
 #home-online:not([hidden]) {
   display: grid;
   gap: 10px;
+}
+
+/* Lists and notes with nothing in them take no room (the note stays in the page for screen readers). */
+#home-online > .home-list:empty {
+  display: none;
+}
+
+#home-search-note:empty {
+  margin-top: -10px;
 }
 
 /* Rows --------------------------------------------------------------------------------------- */
@@ -1694,6 +1610,57 @@ p {
   padding: 6px 10px 8px;
 }
 
+/* The way in to Online, where the people would be: connecting (the dot breathes), a countdown to the
+   next attempt (hollow dot), or offline with a button (danger dot). Laid out as a person row. */
+.connect {
+  min-height: 46px;
+}
+
+.connect-icon {
+  background: var(--deska-surface-raised);
+  color: var(--deska-text-secondary);
+}
+
+.connect-icon .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.connect-icon::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--ground);
+  border-radius: 50%;
+  background: var(--deska-text-secondary);
+}
+
+.connect[data-state='connecting'] .connect-icon::after {
+  background: var(--accent-ink, var(--deska-accent));
+}
+
+.connect[data-state='waiting'] .connect-icon::after {
+  background: var(--ground);
+  box-shadow: inset 0 0 0 2px var(--deska-text-secondary);
+}
+
+.connect:is([data-state='offline'], [data-state='blocked']) .connect-icon::after {
+  background: var(--deska-danger);
+}
+
+.connect-sub {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .connect[data-state='connecting'] .connect-icon::after {
+    animation: breathe 1.1s ease-in-out infinite;
+  }
+}
+
 .home-unshared {
   display: flex;
   flex-wrap: wrap;
@@ -1782,10 +1749,15 @@ p {
   color: var(--deska-text-secondary);
 }
 
-/* The color choice, over the whole home screen, wherever it is scrolled to. */
-.home-choose {
-  position: fixed;
+/* The new-game card: who to play and Dex's level, then the color. It covers the board and the home screen. */
+.new-game {
   z-index: 6;
+}
+
+.new-game-modes {
+  display: grid;
+  gap: 12px;
+  width: 100%;
 }
 
 .card-head {
@@ -1846,21 +1818,6 @@ p {
 
 #app[data-full='true'] .bar { top: 0; border-bottom-color: transparent; }
 #app[data-full='true'] .foot { bottom: 0; }
-
-#app[data-full='true'] .drawer {
-  position: absolute;
-  right: 0;
-  bottom: 36px;
-  left: 0;
-  z-index: 3;
-  background: color-mix(in srgb, var(--ground) 92%, transparent);
-  backdrop-filter: blur(10px);
-}
-
-/* Closed, the drawer is one pixel tall; it must not paint a line over the board. */
-#app[data-full='true'] .drawer[inert] {
-  visibility: hidden;
-}
 
 #app[data-full='true'] .player[data-position='top']::after { top: 0; bottom: auto; }
 #app[data-full='true'] .player[data-position='bottom']::after { top: auto; bottom: 0; }

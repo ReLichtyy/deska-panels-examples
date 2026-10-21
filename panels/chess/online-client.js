@@ -130,10 +130,25 @@ export function createOnlineClient({ sdk, apiUrl, fetcher = globalThis.fetch, on
   let generation = 0
   let controller = null
   let state = { phase: origin ? 'signed-out' : 'unconfigured', busy: false, room: null, error: null }
-  const publish = (patch) => { state = { ...state, ...patch }; onChange(state) }
+  // Listeners hear only real changes: a sync that finds nothing new publishes nothing.
+  const publish = (patch) => {
+    const next = { ...state, ...patch }
+    if (Object.keys(next).every((key) => next[key] === state[key])) return
+    state = next
+    onChange(state)
+  }
+
+  // Room traffic is a queue of one. A person's action (`run`) takes it at once and cancels a
+  // background sync in flight; a sync never waits behind an action, it is skipped and the next
+  // tick tries again. So polling never locks the board, and an old answer never lands on a newer room.
+  let syncing = null // the AbortController of the sync in flight
+  let syncSeq = 0
+  const cancelSync = () => { syncSeq++; syncing?.abort(); syncing = null }
+
   const reset = (error = null) => {
     generation++
     controller?.abort()
+    cancelSync()
     publish({ phase: origin ? 'signed-out' : 'unconfigured', busy: false, room: null, error })
   }
 
@@ -160,6 +175,7 @@ export function createOnlineClient({ sdk, apiUrl, fetcher = globalThis.fetch, on
 
   async function run(work) {
     if (state.busy) throw new OnlineError('busy')
+    cancelSync()
     const activeGeneration = generation
     const operation = new AbortController()
     controller = operation
@@ -247,6 +263,45 @@ export function createOnlineClient({ sdk, apiUrl, fetcher = globalThis.fetch, on
     } finally { clearTimeout(timer) }
   }
 
+  /**
+   * The background check of the room: never sets `busy`. Resolves to the room when it moved on,
+   * or null when nothing changed or the lane was taken. A failure disconnects, as before.
+   */
+  async function syncRoom() {
+    const room = state.room
+    if (!room) throw new OnlineError('no_room')
+    if (state.busy || syncing) return null
+    const seq = ++syncSeq
+    const activeGeneration = generation
+    const operation = new AbortController()
+    syncing = operation
+    const timer = setTimeout(() => operation.abort(), 10000)
+    const stale = () => seq !== syncSeq || activeGeneration !== generation
+    try {
+      const data = await request(`/rooms/${room.id}`, undefined, operation.signal, activeGeneration)
+      const current = state.room
+      if (stale()) throw new OnlineError('cancelled')
+      if (!current || current.id !== room.id) return null
+      // Same revision: nothing to check or replay. Older: an action's answer got here first.
+      if (Number.isSafeInteger(data?.revision) && data.revision <= current.revision) return null
+      const received = acceptRoom(data, current)
+      publish({ room: received, phase: received.status, error: null })
+      return received
+    } catch (error) {
+      if (stale()) throw new OnlineError('cancelled')
+      const known = ['configuration', 'sdk_unavailable', 'invalid_session', 'invalid_response', 'not_signed_in',
+        'permission_denied', 'host_error', 'room_not_found', 'conflict', 'rate_limited', 'server_error', 'cancelled']
+      const code = operation.signal.aborted ? 'timeout' : known.includes(error?.code) ? error.code : 'network_error'
+      console.warn('Chess online sync:', code)
+      if (['not_signed_in', 'permission_denied', 'invalid_session'].includes(code)) reset(code)
+      else publish({ error: code, phase: 'disconnected' })
+      throw new OnlineError(code, error?.detail ?? null)
+    } finally {
+      clearTimeout(timer)
+      if (syncing === operation) syncing = null
+    }
+  }
+
   const presence = () => background('/presence', {}, readPresence)
   const okOnly = (data) => { if (data?.ok !== true) throw new OnlineError('invalid_response'); return true }
   const personId = (id) => { if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(id)) throw new OnlineError('invalid_response'); return id }
@@ -272,10 +327,12 @@ export function createOnlineClient({ sdk, apiUrl, fetcher = globalThis.fetch, on
       if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) throw new OnlineError('invalid_response')
       return loadRoom(`/rooms/${id}`, undefined, null)
     },
+    // Reconnecting is an action (it shows "Conectando…"); the heartbeat uses `sync`.
     refresh: () => {
       if (!state.room) throw new OnlineError('no_room')
       return loadRoom(`/rooms/${state.room.id}`, undefined, state.room)
     },
+    sync: syncRoom,
     move: (uci) => {
       const room = state.room
       if (!room || state.phase !== 'active' || room.games.at(-1).turn !== room.side ||

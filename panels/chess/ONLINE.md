@@ -62,7 +62,7 @@ expiración; identificar al jugador por `sub`, no por datos enviados en el cuerp
 | `POST /challenges/:id/cancel` | `{}` | `{ ok: true }`; el que retó lo retira o descarta una respuesta |
 
 Presencia: el panel llama a `/presence` al entrar, cada 30 s mientras esté visible y al abrir la hoja
-Online. Una persona cuenta como conectada si hizo la llamada en los últimos ~90 s. Cada jugador es
+Online; durante una partida no la llama, porque cada `GET /rooms/:id` también cuenta como latido. Una persona cuenta como conectada si hizo la llamada en los últimos ~90 s. Cada jugador es
 `{ id, name, status, self }`: `id` opaco (`[A-Za-z0-9_-]{1,80}`), `name` alias asignado por el servidor
 (1-24 caracteres: letras, números, espacio y `._'-`), `status` `available` o `playing`, `self` solo
 `true` para el solicitante. Máximo 100 jugadores por respuesta; `total` es el recuento real. Deska no
@@ -116,7 +116,13 @@ Referencia: https://deska.dev/docs/panel-sign-in
 
 ## Pantalla de inicio, nombres y retos
 
-El panel abre siempre en un menú: continuar, partida nueva y jugar con personas. Para lo último usa
+Entrar es automático: no hay botón de entrar. Al abrir, el panel pide la sesión en silencio (`POST /session` con el token
+de `deska.account.token()`). Si el servidor no responde, lo reintenta 3 veces (a los 15 s y a los 30 s) con una
+cuenta atrás donde estarían las personas (`Nuevo intento en 12 s · 2 de 3`); agotados los intentos queda `Sin
+conexión con el servidor` y un botón **Reintentar**. Si Deska rechaza el acceso (sin sesión, sin permiso, cancelado), no
+reintenta solo: el botón **Conectar** abre la hoja de Deska, que solo puede abrirse desde un clic.
+
+El panel abre siempre en un menú: continuar, partida nueva y jugar con personas. Para compartir el nombre usa
 `deska.account.signIn({ name: true })`: Deska pregunta a la persona si comparte su nombre (casilla sin marcar
 por defecto) y, si acepta, el token lleva `name`. Sin nombre se sigue usando el alias aleatorio.
 
@@ -147,7 +153,7 @@ node tools/chess/browser-home.mjs
 
 Jugadas online: tu jugada se muestra al instante mientras el servidor la confirma; si la rechaza,
 vuelve atrás y el aviso sobre el tablero explica el motivo. Las premoves online se envían una a una
-y solo cuando ya llegó la jugada rival (el panel consulta cada 5 s, así que pueden tardar hasta eso).
+y solo cuando ya llegó la jugada rival (el panel consulta la sala cada 1,5 s mientras mueve el rival, espaciando hasta 5 s si no hay cambios; cada 6 s en tu turno y cada 3 s esperando rival). La consulta de fondo nunca bloquea el tablero: tu jugada la cancela y una respuesta más vieja que la sala se descarta.
 
 `tools/chess/test-host.mjs` es exclusivamente una simulación de pruebas, con identidades falsas.
 **No es un backend desplegable ni autentica usuarios reales.** Las pruebas de navegador abren dos

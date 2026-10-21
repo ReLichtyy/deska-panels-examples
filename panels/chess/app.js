@@ -21,6 +21,7 @@ import {
 } from './marks.js'
 import { mountOnline } from './online-ui.js'
 import { initial, levelText, mountHome } from './home.js'
+import { mountNewGame } from './new-game.js'
 import { onlineConfig } from './online-config.js'
 
 const $ = (id) => document.getElementById(id)
@@ -62,6 +63,7 @@ let pendingPromotion = null
 let online = null
 let pendingOnline = null // { uci, after } while the server confirms your online move
 let home = null
+let newGameCard = null // the new-game card: opponent, level, then color
 let stash = null // a local game set aside while a new one is being started from the home screen
 let onlineOpponent = null // the rival's alias, from the room
 let myName = null // your shared name or alias once signed in, for the initial on your line
@@ -220,7 +222,7 @@ function openBars() {
 function closeBars() {
   clearTimeout(barsTimer)
   // Not while a menu is open or the person is using them.
-  if (barsHeld || openSheet || !$('drawer').hasAttribute('inert')) { barsTimer = setTimeout(closeBars, 1500); return }
+  if (barsHeld || openSheet || !$('new-game').hidden) { barsTimer = setTimeout(closeBars, 1500); return }
   if (document.activeElement && document.activeElement.closest('.bar, .foot')) document.activeElement.blur()
   delete $('app').dataset.bars
 }
@@ -287,8 +289,14 @@ function updatePlayers() {
     note.textContent = line.note || ''
     note.toggleAttribute('data-code', !!line.code)
     note.dataset.tone = line.tone || ''
-    // What this side captured is what the other color lost.
-    drawCaptured($(`captured-${position}`), settings.pieceSet, lost[foe], foe === 'w', { accent: colors.ink || colors.accent, bg: colors.bg })
+    // What this side captured is what the other color lost. Redrawn only when it would look different.
+    const captured = $(`captured-${position}`)
+    const look = { accent: colors.ink || colors.accent, bg: colors.bg }
+    const key = [settings.pieceSet, lost[foe].join(''), foe, look.accent, look.bg, window.devicePixelRatio].join('|')
+    if (captured.dataset.key !== key) {
+      captured.dataset.key = key
+      drawCaptured(captured, settings.pieceSet, lost[foe], foe === 'w', look)
+    }
     const lead = lost.lead * (mine === 'w' ? 1 : -1)
     const material = $(`material-${position}`)
     material.textContent = lead > 0 ? `+${lead}` : ''
@@ -440,7 +448,7 @@ function startGame(choice) {
   clearSelection()
   clearPremoves()
   clearMarks()
-  closeDrawer()
+  newGameCard?.close()
   showPhase()
   announceTitle()
   saveGame()
@@ -530,12 +538,13 @@ function targetIndex(direction) {
 
 function goTo(index) {
   if (onlineMode) return
+  const movement = reduced.matches ? null : historySlideMoves(cursor, index)
   botToken++
   thinking = false
   cursor = index
   game = games[cursor]
   phase = isOver(game) ? 'over' : 'play'
-  slide = null
+  slide = movement?.length ? { moves: movement, start: performance.now() } : null
   clearHint()
   resultDismissed = false
   clearSelection()
@@ -601,16 +610,6 @@ async function showHint() {
   redraw()
 }
 
-function openDrawer() {
-  $('drawer').removeAttribute('inert')
-  $('drawer-toggle').setAttribute('aria-expanded', 'true')
-}
-
-function closeDrawer() {
-  $('drawer').setAttribute('inert', '')
-  $('drawer-toggle').setAttribute('aria-expanded', 'false')
-}
-
 function slideMoves(from, move) {
   const out = [{ from: { f: from.f, r: from.r }, to: { f: move.f, r: move.r } }]
   if (move.castle) {
@@ -619,6 +618,30 @@ function slideMoves(from, move) {
     out.push({ from: { f: rookFrom, r: move.r }, to: { f: rookTo, r: move.r } })
   }
   return out
+}
+
+// Track the pieces that survive the history jump. With the bot on, navigation crosses two
+// plies: a captured piece must reappear on its square, never slide as its capturer.
+function historySlideMoves(start, end) {
+  const origins = games[start].board.map((row, r) => row.map((piece, f) => piece ? { f, r } : null))
+  const direction = end > start ? 1 : -1
+  for (let i = start; i !== end; i += direction) {
+    const before = direction > 0 ? i : i - 1
+    const { from, move } = moveFromUci(games[before], ucis[before])
+    for (const path of slideMoves(from, move)) {
+      const source = direction > 0 ? path.from : path.to
+      const target = direction > 0 ? path.to : path.from
+      origins[target.r][target.f] = origins[source.r][source.f]
+      origins[source.r][source.f] = null
+    }
+    if (direction > 0 && move.ep) origins[from.r][move.f] = null
+  }
+  const movement = []
+  for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+    const from = origins[r][f]
+    if (from && (from.f !== f || from.r !== r)) movement.push({ from, to: { f, r } })
+  }
+  return movement
 }
 
 const PIECE_NAMES = { k: 'rey', q: 'dama', r: 'torre', b: 'alfil', n: 'caballo', p: 'peón' }
@@ -675,6 +698,8 @@ function setTurnIcon(name, tone = '') {
   }
 }
 
+let sentTitle = null
+
 function announceTitle() {
   let text
   let icon = 'horse'
@@ -683,7 +708,9 @@ function announceTitle() {
   if (phase === 'choose') { text = 'Nueva partida'; icon = 'crown-simple' } // the card below says "Elige tu color"
   else if (phase === 'over') { text = resultText().title; icon = resultText().icon }
   else if (onlineMode) {
-    text = onlineLocked ? (online?.state.phase === 'waiting' ? 'Esperando rival' : online?.state.busy ? 'Sincronizando…' : 'Sin conexión')
+    // Your move is on the board while the server confirms it, so the title already passes the turn.
+    text = pendingOnline && online?.state.busy ? 'Turno de tu rival'
+      : onlineLocked ? (online?.state.phase === 'waiting' ? 'Esperando rival' : online?.state.busy ? 'Sincronizando…' : 'Sin conexión')
       : game.turn === side ? 'Tu turno · Online' : 'Turno de tu rival'
     icon = 'user-circle'
   }
@@ -697,7 +724,11 @@ function announceTitle() {
   $('turn').closest('.turn').classList.toggle('is-thinking', thinking)
   setTurnIcon(icon, tone)
   updateNav()
-  deska.setTitle(text).catch((err) => console.warn('Chess: title update failed', err.code || 'host_error'))
+  // The title goes to the host over a message, so only a new text is sent.
+  if (text !== sentTitle) {
+    sentTitle = text
+    deska.setTitle(text).catch((err) => { sentTitle = null; console.warn('Chess: title update failed', err.code || 'host_error') })
+  }
   $('board').setAttribute('aria-label', `Tablero de ajedrez. ${side === 'w' ? 'Blancas' : 'Negras'} abajo. ${text}.`)
   updatePlayers()
 }
@@ -1065,8 +1096,7 @@ function buildControls() {
   $('hint').addEventListener('click', showHint)
   $('undo').addEventListener('click', () => { const i = targetIndex(-1); if (i !== -1) goTo(i) })
   $('redo').addEventListener('click', () => { const i = targetIndex(1); if (i !== -1) goTo(i) })
-  $('drawer-toggle').addEventListener('click', () => ($('drawer').hasAttribute('inert') ? openDrawer() : closeDrawer()))
-  for (const button of document.querySelectorAll('[data-new]')) button.addEventListener('click', () => startGame(button.dataset.new))
+  $('drawer-toggle').addEventListener('click', () => newGameCard.open(null, $('drawer-toggle')))
   $('restart').addEventListener('click', restart)
 
   for (const button of document.querySelectorAll('[data-piece-set]')) {
@@ -1151,7 +1181,7 @@ function renderPreviews() {
     drawPreview(button.querySelector('canvas'), button.dataset.pieceSet, undefined, look)
   }
   for (const button of document.querySelectorAll('.choice')) {
-    const pieces = { w: [['k', true]], b: [['k', false]], random: [['n', true], ['n', false]] }[button.dataset.side]
+    const pieces = { w: [['k', true]], b: [['k', false]], random: [['n', true], ['n', false]] }[button.dataset.side || button.dataset.pick]
     drawPreview(button.querySelector('canvas'), settings.pieceSet, pieces, look)
   }
 }
@@ -1226,7 +1256,7 @@ online = mountOnline({ sdk: deska, init,
     onlineCode = room.code
     onlineStatus = room.status
     pendingOnline = null
-    botToken++; thinking = false; clearHint(); closeDrawer()
+    botToken++; thinking = false; clearHint(); newGameCard?.close()
     const wasOver = phase === 'over'
     games = room.games; ucis = room.moves; cursor = games.length - 1; game = games[cursor]; side = room.side
     phase = room.status === 'finished' ? 'over' : 'play'
@@ -1263,6 +1293,8 @@ online = mountOnline({ sdk: deska, init,
   },
   onNotice: (text, kind) => showStatus(text, kind),
   onState: (state) => home?.sync(state),
+  // The home's folded Online heading says "Conectando…" or "Sin conexión" while signed out.
+  onConnection: () => { if (home?.isOpen) home.render() },
 })
 
 // Home screen ----------------------------------------------------------------------------------
@@ -1317,16 +1349,28 @@ function newLocalGame(bot) {
   $('choose').querySelector('button').focus({ preventScroll: true })
 }
 
+// The new-game card asks who to play and the color, then starts the game on the board.
+newGameCard = mountNewGame({
+  settings: () => settings,
+  actions: {
+    start(kind, choice) {
+      newLocalGame(kind === 'bot')
+      startGame(choice)
+      if (home?.isOpen) home.close(true)
+    },
+    setLevel: (n) => change({ botRating: n }),
+    renderChoices: renderPreviews,
+    onToggle: (open) => $('drawer-toggle').setAttribute('aria-expanded', String(open)),
+  },
+})
+
 home = mountHome({
   sdk: deska, app: $('app'), online, configured: !!onlineConfig.apiUrl, settings: () => settings,
   local: localSnapshot, look: () => ({ palette: boardColors() }),
   actions: {
     hasGame: () => phase !== 'choose',
     continueLocal,
-    // The home screen asks for the color itself, so the game starts straight away.
-    startBot: (choice) => { newLocalGame(true); startGame(choice) },
-    startTwo: (choice) => { newLocalGame(false); startGame(choice) },
-    renderChoices: renderPreviews,
+    chooseNew: (kind, opener) => newGameCard.open(kind, opener),
     setMe: (name) => { if (name !== myName) { myName = name; updatePlayers() } },
     setLevel: (n) => change({ botRating: n }),
     openCode: () => showSheet('online-sheet'),
